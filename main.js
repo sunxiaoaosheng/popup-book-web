@@ -425,7 +425,7 @@ const DOOR = { x0: -0.75, x1: -0.05, h: 1.05 }, WIN = { x0: 0.45, x1: 1.15, y0: 
   for (const x of [DOOR.x0 - 0.005, DOOR.x1 + 0.005]) { const side = box(0.01, DOOR.h, 0.34, '#4d2c1a', x + (x < -0.4 ? 0.005 : -0.005), DOOR.h / 2, -0.2); popG.add(side); }
 }
 // 窗：灯光玻璃 + 窗框 + 十字
-const glassMat = new THREE.MeshBasicMaterial({ color: '#7f8f9a' });
+const glassMat = new THREE.MeshBasicMaterial({ color: '#7f8f9a', transparent: true, opacity: 0.72, depthWrite: false });
 const glass = new THREE.Mesh(new THREE.PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), glassMat);
 glass.position.set((WIN.x0 + WIN.x1) / 2, (WIN.y0 + WIN.y1) / 2, -0.03); cabin.add(glass);
 {
@@ -550,6 +550,16 @@ const zzz = [];
 }
 kitten.scale.setScalar(0.9);
 kitten.visible = false;
+// v5：伸懒腰时抬起的前爪（平时隐藏）
+K.paws = new THREE.Group(); kitten.add(K.paws);
+for (const sx of [-1, 1]) {
+  const g = new THREE.Group(); g.position.set(sx * 0.14, 0.42, 0.06);
+  g.add(cut(ellipseShape(0, 0.1, 0.055, 0.13), FUR, 0, 0.02));
+  g.add(cut(ellipseShape(0, 0.2, 0.07, 0.05), CREAM, 0.02, 0.012));
+  for (const dx of [-0.035, 0, 0.035]) g.add(cut(ellipseShape(dx, 0.245, 0.018, 0.028), PINK, 0.03, 0.008));
+  g.userData.sx = sx; K.paws.add(g);
+}
+K.paws.visible = false;
 
 /* ============================================================ 小猫的行头 + 四季窗台道具 */
 const accs = [];   // 春花 / 夏草帽 / 秋枫叶 / 冬围巾
@@ -783,7 +793,7 @@ const S = {
   act: { seam: false, nap: false, chase: false },
   armed: false, closing: false, closeMax: 0, ending: 0, slamT: 0,
   eggT: 0, lookX: 0, lookY: 0, mouseT: -99, mouseX: 0, mouseY: 0, hover: '', nudgeT: 0,
-  run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 }, conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,
+  run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 }, conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false, dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0,
   cap: '', capUntil: 0, kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
 };
 const caption = document.getElementById('caption');
@@ -892,7 +902,7 @@ function update(dt) {
   const hingeA = S.hinge.step(A, dt) + idle + flut * 0.9 * Math.sin(T * 31) + flut * 0.5 * Math.sin(T * 17.3);
   const nightP = S.night.step(sstep(100, 126, A), dt);
   const moonP = S.moonUp.step(sstep(100, 118, A), dt);
-  const litP = S.lit.step(sstep(52, 62, A), dt);
+  const litP = S.lit.step(sstep(42, 55, A), dt);   // v5：提前亮窗，清晨窗后剪影才看得见
   const doorP = S.door.step(sstep(68, 77, A), dt);
   const cabinP = S.cabin.step(sstep(34, 52, A), dt);
 
@@ -915,14 +925,22 @@ function update(dt) {
     if (Math.abs(A - H.anchor) > TUNING.holdTol) {
       H.anchor = A; H.t = 0; H.fired = false;
     } else H.t += dt;
-    H.band = (H.anchor > 4 && H.anchor < 16) ? 'seam' : (H.anchor > 52 && H.anchor < 72 && cabinP > 0.9) ? 'nap' : (H.anchor > 109 && H.anchor < 124) ? 'chase' : '';
-    const ring = H.band && !H.fired && H.t > 0.9 ? clamp((H.t - 0.9) / (TUNING.holdSeconds - 0.9), 0, 1) : -1;
+    const dawnBand = H.anchor >= TUNING.dawnLo && H.anchor <= TUNING.dawnHi && cabinP > 0.55 && peekP < 0.12;
+    H.band = (H.anchor > 4 && H.anchor < 16) ? 'seam' : dawnBand ? 'dawn' : (H.anchor > 52 && H.anchor < 72 && cabinP > 0.9) ? 'nap' : (H.anchor > 109 && H.anchor < 124) ? 'chase' : '';
+    const holdNeed = H.band === 'dawn' ? TUNING.dawnHold : TUNING.holdSeconds;
+    const ring = H.band && !H.fired && H.t > 0.7 ? clamp((H.t - 0.7) / Math.max(0.4, holdNeed - 0.7), 0, 1) : -1;
     ui.setRing(ring);
-    if (H.band && !H.fired && H.t >= TUNING.holdSeconds) {
-      H.fired = true; S.act[H.band] = true;
-      if (H.band === 'seam') { discover('seam'); sound.mew(); say('缝里有一双眼睛，在偷看你…', 4); }
-      if (H.band === 'nap') { discover('nap'); say('小猫趁你不动，爬上屋顶靠着烟囱睡着了 · Zzz', 5); sound.purr(true); S.purring = true; }
-      if (H.band === 'chase') { discover('chase'); say('小猫跳下窗台，追着萤火虫跑！', 5); sound.meow(1.2, 0.4, 0.35); }
+    if (H.band && !H.fired && H.t >= holdNeed) {
+      H.fired = true;
+      if (H.band === 'dawn') {
+        S.dawnHeld = true;
+        if (!S.dawnSaid) { S.dawnSaid = true; say('清晨 · 窗边伸了个懒腰', 3.5); sound.mew(); }
+      } else {
+        S.act[H.band] = true;
+        if (H.band === 'seam') { discover('seam'); sound.mew(); say('缝里有一双眼睛，在偷看你…', 4); }
+        if (H.band === 'nap') { discover('nap'); say('小猫趁你不动，爬上屋顶靠着烟囱睡着了 · Zzz', 5); sound.purr(true); S.purring = true; }
+        if (H.band === 'chase') { discover('chase'); say('小猫跳下窗台，追着萤火虫跑！', 5); sound.meow(1.2, 0.4, 0.35); }
+      }
     }
     if (S.act.seam && !(A > 2.5 && A < 18)) S.act.seam = false;
     if (S.act.nap && !(A > 47 && A < 76) ) { S.act.nap = false; if (S.purring && !S.petDown) { sound.purr(false); S.purring = false; } }
@@ -932,7 +950,7 @@ function update(dt) {
   // --- v4：陪它过完一整天（从缝隙一路慢慢开到天黑，中途不回头、不猛开） ---
   {
     const R = S.run;
-    if (A < TUNING.dayStart) { R.on = true; R.t0 = T; R.max = A; R.bad = ''; R.done = false; S.sunsetSaid = false; S.sneezeSaid = false; }
+    if (A < TUNING.dayStart) { R.on = true; R.t0 = T; R.max = A; R.bad = ''; R.done = false; S.sunsetSaid = false; S.sneezeSaid = false; S.dawnSaid = false; S.dawnHeld = false; }
     else if (R.on && !R.done) {
       if (A > R.max) R.max = A;
       if (A < R.max - TUNING.dayBackTol) R.bad = 'back';
@@ -1027,8 +1045,11 @@ function update(dt) {
   cabin.rotation.x = Math.PI / 2 - cabinPhi;
   popG.scale.z = Math.max(0.001, sstep(0.55, 0.95, cabinE));           // 立体件随站起来再"鼓"出来
   glassMat.color.lerpColors(glassOff, glassOn, litP);
-  winGlow.material.opacity = litP * (0.42 + 0.35 * nightP) * (0.95 + 0.05 * Math.sin(T * 9));
-  windowLight.intensity = litP * (1.2 + 2.2 * nightP);
+  // v5：清晨窗后伸懒腰时玻璃更透、窗光更暖，剪影才读得出来
+  const dawnGlow = S.dawnW || 0;
+  glassMat.opacity = lerp(0.82, 0.28, Math.max(litP * 0.65, dawnGlow));
+  winGlow.material.opacity = (litP * (0.42 + 0.35 * nightP) + 0.38 * dawnGlow) * (0.95 + 0.05 * Math.sin(T * 9));
+  windowLight.intensity = litP * (1.2 + 2.2 * nightP) + 1.4 * dawnGlow;
   cabin.localToWorld(_v.set(SILL_X, 1.1, 1.6)); windowLight.position.copy(_v);
   doorPivot.rotation.y = -doorP * 1.95;
   puffs.forEach((p, i) => {
@@ -1056,7 +1077,11 @@ function update(dt) {
   const napE = S.napP * S.napP * (3 - 2 * S.napP), chE = S.chaseP * S.chaseP * (3 - 2 * S.chaseP);
   const baseVis = peekP > 0.003 && cabinE > 0.5 && S.napP < 0.004;
   const napVis = S.napP > 0.004 && cabinE > 0.8;
-  const showK = baseVis || napVis;
+  // v5：清晨/上午早段、门探头之前——窗后伸懒腰（不跟正午喷嚏/黄昏看日落抢优先级）
+  const dawnWant = cabinE > 0.55 && A >= TUNING.dawnLo && A <= TUNING.dawnHi && peekP < 0.1 && hopP < 0.05 && !napVis;
+  S.dawnW = smooth(S.dawnW, dawnWant ? 1 : 0, dt, dawnWant ? 0.45 : 0.35);
+  const dawnVis = S.dawnW > 0.04;
+  const showK = baseVis || napVis || dawnVis;
   kitten.visible = showK;
   const seasonI = S.season;
   let lx = 0, ly = 0, pounce = 0, lick = 0, shiver = 0;
@@ -1066,7 +1091,28 @@ function update(dt) {
     if (napVis) {
       px = lerp(0.36, 0.4, napE); py = lerp(1.65, 2.5, napE); pz = lerp(-0.55, 0.12, napE);
       sxs = sys = 0.5; rz = -0.5 * napE; K.head.rotation.x = 0;
+      K.paws.visible = false;
+    } else if (dawnVis && peekP < 0.35) {
+      // 窗后：剪影在玻璃里，循环伸懒腰（前爪上抬 / 弓背 / 眯眼打哈欠）
+      const ph = (T * 0.32) % 1; S.dawnPhase = ph;
+      const up = Math.sin(Math.PI * clamp((ph - 0.12) / 0.38, 0, 1));           // 抬起
+      const hold = clamp((ph - 0.42) / 0.18, 0, 1) * (1 - clamp((ph - 0.68) / 0.22, 0, 1)); // 顶峰停一下
+      const stretch = Math.max(up, hold);
+      S.dawnStretch = stretch;
+      const winCx = SILL_X, winCy = (WIN.y0 + WIN.y1) / 2;
+      px = winCx; py = WIN.y0 - 0.04 + 0.08 * stretch; pz = -0.05;  // 贴着玻璃内侧，橘毛透过暖光能看清
+      sxs = 0.72 * (1 - 0.1 * stretch); sys = 0.72 * (1 + 0.38 * stretch); rz = -0.12 * stretch;
+      lx = 0.1 * Math.sin(T * 0.7); ly = 0.45 + 0.35 * stretch;   // 懒洋洋抬头
+      K.paws.visible = true;
+      K.paws.children.forEach((g, i) => {
+        const sx = g.userData.sx;
+        g.position.set(sx * (0.1 + 0.04 * stretch), 0.42 + 0.32 * stretch, 0.08);
+        g.rotation.z = sx * (-1.15 - 0.55 * stretch);
+        g.rotation.x = -0.55 * stretch;
+        g.scale.setScalar(1.05 + 0.25 * stretch);
+      });
     } else {
+      K.paws.visible = false; S.dawnStretch = 0;
       const u = clamp(hopP, 0, 1.06), uc = clamp(u, 0, 1);
       const e = uc * uc * (3 - 2 * uc);
       px = lerp(-0.4, SILL_X, e); pz = -0.15 + 0.5 * sstep(0, 0.28, uc);
@@ -1162,6 +1208,21 @@ function update(dt) {
       const eye = K.eyes[i]; eye.scale.set(wide, Math.max(0.08, open) * wide, 1);
       eye.position.x = (i ? 1 : -1) * 0.105 + S.lookX * 0.02; eye.position.y = 0.015 + S.lookY * 0.016;
     }
+    // v5：清晨伸懒腰的脸——眯眼 + 打哈欠（盖过普通眨眼，不碰正午逻辑）
+    if (S.dawnW > 0.2 && peekP < 0.35) {
+      const st = S.dawnStretch || 0;
+      const yawn = Math.max(0.2, st * 1.05);
+      K.body.scale.y *= 1 + 0.18 * st;
+      K.head.position.y += 0.14 * st;
+      K.head.rotation.x -= 0.7 * st;
+      K.head.rotation.z += 0.12 * Math.sin(T * 1.2) * (1 - st);
+      for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * lerp(0.55, 0.12, st));
+      K.mouth.scale.set(1 + 0.15 * yawn, Math.max(0.001, yawn), 1);
+      K.mouth.visible = yawn > 0.08; K.mouthLine.visible = yawn <= 0.08;
+      K.tail.rotation.z = 0.25 + 0.2 * Math.sin(T * 1.4);
+    } else if (!dawnVis) {
+      K.paws.visible = false;
+    }
     // v4：正午太阳太晃眼——眯眼，隔一会儿打个小喷嚏
     const noonT = (!napVis && chE < 0.1 && nightP < 0.2 && S.dayC > 0.4 && S.dayC < 0.75 && paperSun.visible && peekP > 0.6) ? 1 : 0;
     S.noonW = smooth(S.noonW, noonT, dt, 0.6);
@@ -1193,7 +1254,7 @@ function update(dt) {
     if (peekP > 0.5 && S.prevPeek <= 0.5 && S.shy > 0.5) sound.mew();
     if (hopP > 0.5 && S.prevHop <= 0.5) sound.meow(1, 0.55, 0.4);
     S.prevPeek = peekP; S.prevHop = hopP;
-  } else { S.prevPeek = peekP; S.prevHop = hopP; kleaf.visible = false; S.noonW = smooth(S.noonW, 0, dt, 0.3); S.watchW = smooth(S.watchW, 0, dt, 0.3); S.sunsetT = 0; }
+  } else { S.prevPeek = peekP; S.prevHop = hopP; kleaf.visible = false; K.paws.visible = false; S.noonW = smooth(S.noonW, 0, dt, 0.3); S.watchW = smooth(S.watchW, 0, dt, 0.3); S.sunsetT = 0; S.dawnStretch = 0; }
   // 抚摸：爱心 + 呼噜
   if (S.petDown) {
     S.petT += dt; S.heartCd = (S.heartCd || 0) - dt;
@@ -1491,6 +1552,7 @@ window.__popup = {
       holdT: +S.hold.t.toFixed(2), holdBand: S.hold.band, found: store.foundCount(), cycles: store.cycles, petE: +S.petE.toFixed(2), ending: S.endMode,
       sunU: +S.dayU.toFixed(3), sunVisible: paperSun.visible, sunPos: paperSun.position.toArray().map((x) => +x.toFixed(2)), light: sun.position.toArray().map((x) => +x.toFixed(2)), sunI: +sun.intensity.toFixed(2), tod: S.tod, sky: '#' + skyMat.color.getHexString(), horizon: +horizonMat.opacity.toFixed(2),
       run: { ...S.run, t0: undefined, dur: +S.run.dur.toFixed(2) }, conP: +S.conP.toFixed(2), conVisible: catStars.visible, watchW: +S.watchW.toFixed(2), noonW: +S.noonW.toFixed(2), sneezes: S.sneezes, sneeze: +(S.sneeze || 0).toFixed(2), lookX: +S.lookX.toFixed(2), lookY: +S.lookY.toFixed(2), caption: S.cap,
+      dawnStretch: +S.dawnW.toFixed(2), dawnPose: +(S.dawnStretch || 0).toFixed(2), dawnHeld: !!S.dawnHeld, dawnSaid: !!S.dawnSaid, period: S.tod,
       kittenPos: kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover, events: sound.events.slice(-14),
       trees: trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
     };

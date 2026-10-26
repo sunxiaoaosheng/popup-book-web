@@ -46,4 +46,6 @@ export const TUNING = {
   // v4「一整天」：从 dayStart 以下开始，不回头（回退不超过 dayBackTol 度）、不猛开，一路开到 dayEnd，用时 ≥ daySeconds
   dayStart: 30, dayEnd: 122, dayBackTol: 5, daySeconds: 9,
   sneezeEvery: 6.5,   // 正午小猫打喷嚏的间隔（秒）
+  // v5「清晨窗边伸懒腰」：在 dawnLo–dawnHi 停住 dawnHold 秒出字幕（不是秘密）
+  dawnLo: 36, dawnHi: 58, dawnHold: 2.2,
 };

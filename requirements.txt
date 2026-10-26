@@ -1,0 +1,2 @@
+websockets>=12
+pybooklid>=1.0.0   # 仅真实传感器需要（会自动装 hidapi）；--fake 模式可不装

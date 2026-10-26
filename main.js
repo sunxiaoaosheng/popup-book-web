@@ -275,6 +275,45 @@ const stars = [];
   }
 }
 
+/* ---- v3「日晷」：一枚纸太阳插在盖页的弧形滑槽里，盖子开多大，太阳就走到哪 ----
+   约 36° 从右边山后升起 → 约 74° 正午最高 → 约 112° 从左边山后落下（月亮随后从右边升起）。
+   太阳的位置同时驱动平行光的方向：开合盖子 = 推着太阳走，树和小屋的影子会跟着在地上扫过去。 */
+const SUN_ARC = { cx: 0, cy: 1.25, rx: 3.85, ry: 3.65, a0: 36, a1: 112 };
+const sunAt = (u, out) => out.set(SUN_ARC.cx + SUN_ARC.rx * Math.cos(Math.PI * u), SUN_ARC.cy + SUN_ARC.ry * Math.sin(Math.PI * u), 0);
+const paperSun = new THREE.Group(); backFace.add(paperSun);
+{
+  const rays = []; for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12, r = i % 2 ? 0.47 : 0.66; rays.push([Math.cos(a) * r, Math.sin(a) * r]); }
+  const rayM = cut(polyShape(rays), '#ffb43c', 0.05, 0.03); rayM.material[0] = paperGlow('#ffb43c'); paperSun.add(rayM);
+  const disc = cut(ellipseShape(0, 0, 0.42, 0.42), '#ffd765', 0.08, 0.03); disc.material[0] = paperGlow('#ffd765'); paperSun.add(disc);
+  // 纸太阳的小脸（闭眼微笑），黄昏时会困
+  const face = new THREE.Group(); face.position.z = 0.112; paperSun.add(face);
+  const ink = new THREE.MeshBasicMaterial({ color: '#b5651d' });
+  for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.016, 4, 12, Math.PI), ink); e.position.set(sx * 0.14, 0.06, 0); e.rotation.z = Math.PI; face.add(e); }
+  const mo = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.017, 4, 14, Math.PI), ink); mo.position.set(0, -0.1, 0); mo.rotation.z = Math.PI; face.add(mo);
+  for (const sx of [-1, 1]) { const ch = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), new THREE.MeshBasicMaterial({ color: '#ff9a6a', transparent: true, opacity: 0.6 })); ch.position.set(sx * 0.25, -0.07, -0.001); face.add(ch); }
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), addMat('#ffd27a', 0.42)); halo.position.z = 0.04; paperSun.add(halo);
+  paperSun.userData = { rays: rayM, halo, face };
+}
+// 弧形滑槽：天空纸上一排压痕小点，暗示"太阳是插在槽里推着走的"
+const sunSlot = new THREE.Group(); backFace.add(sunSlot);
+{
+  const dotM = new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.1, depthWrite: false });
+  const P = new THREE.Vector3();
+  for (let i = 0; i <= 44; i++) { sunAt(i / 44, P); if (P.y < 2.2) continue; const d = new THREE.Mesh(new THREE.CircleGeometry(0.035, 8), dotM); d.position.set(P.x, P.y, 0.02); sunSlot.add(d); }
+  sunSlot.userData.mat = dotM;
+}
+// 地平线霞光：清晨粉紫、黄昏橘红（竖向渐变纸，贴在远山后面）
+const horizonTex = (() => {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 128, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const horizonMat = new THREE.MeshBasicMaterial({ color: '#ff8a4c', map: horizonTex, transparent: true, opacity: 0, depthWrite: false });
+const horizon = new THREE.Mesh(new THREE.PlaneGeometry(PW - 0.4, 3.2), horizonMat); horizon.position.set(0, 2.0 + 1.6 - 0.4, 0.015); backFace.add(horizon);
+const DAWN_SKY = new THREE.Color('#f3c7d6'), DAWN_GLOW = new THREE.Color('#ff9fb8'), DUSK_GLOW = new THREE.Color('#ff7a3a');
+const SUN_LOW = new THREE.Color('#ff9d5c');
+const TIMES = [[0, '清晨'], [0.2, '上午'], [0.4, '正午'], [0.6, '午后'], [0.8, '黄昏']];
+
 // 书脊暖光缝（合上时漏光）
 const seamGlow = new THREE.Mesh(new THREE.PlaneGeometry(PW, 1), addMat('#ffb050', 0));
 seamGlow.position.set(0, 0.5, PH + 0.02); book.add(seamGlow);
@@ -702,7 +741,7 @@ function setSeason(i, instant = false) {
 const S = {
   target: 0, filtered: 0,
   hinge: new Spring(140, 0.6, 0),
-  lit: new Spring(18, 1, 0), night: new Spring(10, 1, 0), moonUp: new Spring(24, 0.8, 0),
+  lit: new Spring(18, 1, 0), night: new Spring(10, 1, 0), moonUp: new Spring(24, 0.8, 0), sunU: new Spring(60, 0.5, 0), dayU: 0, tod: '',
   door: doorSpr, cabin: cabinSpr,
   peek: new Spring(80, 0.6, 0), hop: new Spring(70, 0.75, 0),
   egg: new Spring(140, 0.55, 0), sleepy: new Spring(22, 1, 0), yawn: 0, yawnT: 99,
@@ -887,12 +926,31 @@ function update(dt) {
   if (SEASON.t < 1) { SEASON.t = Math.min(1, SEASON.t + dt / 2.2); applySeasonColors(); }
   const SK = SKY[SEASON.to], SF = SKY[SEASON.from], se = SEASON.t;
   const mixC = (key, out) => out.lerpColors(SF[key], SK[key], se);
-  sun.intensity = lerp(lerp(SF.sunI, SK.sunI, se), 1.3, nightP);
-  mixC('sun', lightTmp); sun.color.lerpColors(lightTmp, sunNight, nightP);
-  hemi.intensity = lerp(1.5, 1.05, nightP); mixC('hemi', lightTmp); hemi.color.lerpColors(lightTmp, hemiSkyNight, nightP); hemi.groundColor.lerpColors(hemiGndDay, hemiGndNight, nightP);
-  const dusk = sstep(70, 105, A);
-  mixC('day', lightTmp); mixC('mid', lightTmp2); tmpC.lerpColors(lightTmp, lightTmp2, dusk);
+  // v3：太阳沿弧线走（带一点纸片过冲），光的方向、颜色、强度都跟着它
+  const dayRaw = clamp((A - SUN_ARC.a0) / (SUN_ARC.a1 - SUN_ARC.a0), -0.08, 1.08);
+  const sunU = S.sunU.step(dayRaw, dt); S.dayU = sunU;
+  const uc = clamp(sunU, 0, 1), elev = Math.sin(Math.PI * uc);
+  sunAt(sunU, _v2); paperSun.position.copy(_v2);
+  paperSun.visible = A > SUN_ARC.a0 - 4 && sunU < 1.07;
+  paperSun.rotation.z = -T * 0.08 - sunU * 2.2;
+  paperSun.userData.face.rotation.z = -paperSun.rotation.z;                       // 脸保持朝上
+  paperSun.userData.face.scale.y = lerp(1, 0.55, sstep(0.75, 1, uc));              // 傍晚眯眼
+  sunSlot.visible = A > SUN_ARC.a0 - 6; sunSlot.userData.mat.opacity = 0.1 * (1 - nightP);
+  const dawnP = (1 - sstep(0.05, 0.38, uc)) * sstep(SUN_ARC.a0 - 2, SUN_ARC.a0 + 6, A);
+  const goldP = sstep(0.62, 0.97, uc) * (1 - nightP);
+  const lowP = Math.max(dawnP, goldP);
+  // 平行光：从太阳那一侧照过来；太阳低 → 光低 → 影子长；夜里换成右上的月光
+  const slx = lerp(13 * Math.cos(Math.PI * uc), 7, nightP), sly = lerp(3.5 + 13 * elev, 13, nightP);
+  sun.position.set(slx, sly, 11);
+  sun.intensity = lerp(lerp(SF.sunI, SK.sunI, se) * (0.62 + 0.38 * elev), 1.3, nightP);
+  mixC('sun', lightTmp); lightTmp.lerp(SUN_LOW, 0.75 * lowP); sun.color.lerpColors(lightTmp, sunNight, nightP);
+  hemi.intensity = lerp(1.5 - 0.25 * lowP, 1.05, nightP); mixC('hemi', lightTmp); hemi.color.lerpColors(lightTmp, hemiSkyNight, nightP); hemi.groundColor.lerpColors(hemiGndDay, hemiGndNight, nightP);
+  mixC('day', lightTmp); lightTmp.lerp(DAWN_SKY, 0.7 * dawnP); mixC('mid', lightTmp2); tmpC.lerpColors(lightTmp, lightTmp2, goldP);
   mixC('night', lightTmp2); skyMat.color.lerpColors(tmpC, lightTmp2, nightP);
+  horizonMat.color.lerpColors(DAWN_GLOW, DUSK_GLOW, sstep(0.3, 0.7, uc));
+  horizonMat.opacity = Math.max(0.55 * dawnP, 0.85 * goldP) * (1 - nightP);
+  paperSun.userData.halo.material.opacity = 0.32 + 0.3 * lowP;
+  S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : TIMES.filter(([u0]) => uc >= u0).pop()[1]);
   scene.background.set('#2a211b').lerp(tmpC.set('#10162b'), nightP * 0.6);
 
   // --- 折叠台阶 / 树 ---
@@ -1205,6 +1263,7 @@ function update(dt) {
   if (sleepyP > 0.5 && showK && A > 60) ct = '合上的时候，小猫打了个哈欠，睡着了 · Zzz';
   if (A > 70 && S.shy > 0.5) ct = '慢慢开 · 小猫害羞地探出半个脑袋…';
   if (A > 70 && !S.act.nap && !S.act.chase && S.shy < 0.5 && cabinE > 0.9) ct = ct + `  ·  ${SEASONS[S.season].blurb}`;
+  if (S.tod && !(T < S.capUntil)) ct = `${S.tod} · ${ct}`;
   if (T < S.capUntil) ct = S.cap;
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
   // 含蓄提示：停留一阵、还有没发现的秘密时，轻轻递一句
@@ -1340,6 +1399,7 @@ window.__popup = {
       A: +S.filtered.toFixed(2), sp: +S.sp.toFixed(1), season: S.season, shy: +S.shy.toFixed(2), napP: +S.napP.toFixed(2), chaseP: +S.chaseP.toFixed(2), flutT: +S.flutT.toFixed(2),
       burstT: +S.burstT.toFixed(2), owl: O.state, owlVisible: owl.visible, kittenVisible: kitten.visible, act: { ...S.act }, seamEye: +(S.seamEye || 0).toFixed(2),
       holdT: +S.hold.t.toFixed(2), holdBand: S.hold.band, found: store.foundCount(), cycles: store.cycles, petE: +S.petE.toFixed(2), ending: S.endMode,
+      sunU: +S.dayU.toFixed(3), sunVisible: paperSun.visible, sunPos: paperSun.position.toArray().map((x) => +x.toFixed(2)), light: sun.position.toArray().map((x) => +x.toFixed(2)), sunI: +sun.intensity.toFixed(2), tod: S.tod, sky: '#' + skyMat.color.getHexString(), horizon: +horizonMat.opacity.toFixed(2),
       kittenPos: kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover, events: sound.events.slice(-14),
       trees: trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
     };

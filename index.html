@@ -29,14 +29,41 @@
   button{background:#f2a24a;color:#2a1a0e;border:0;border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer}
   button.ghost{background:transparent;color:#f6ead2;border:1px solid rgba(255,255,255,.3)}
   #hint{position:fixed;right:12px;top:12px;font-size:12px;opacity:.55}
-  body.nohud #hud,body.nohud #caption,body.nohud #hint{display:none}
+  body.nohud #hud,body.nohud #caption,body.nohud #hint,body.nohud #tools,body.nohud #nudge{display:none}
+  /* ---- v2：工具栏 / 手账 / toast / 进度环 / 晚安 ---- */
+  #tools{position:fixed;left:12px;top:12px;display:flex;gap:8px;z-index:5}
+  #tools button.ghost{background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:13px}
+  #journal{position:fixed;left:12px;top:52px;width:min(340px,86vw);max-height:70vh;overflow:auto;z-index:6;
+    background:rgba(30,22,16,.88);backdrop-filter:blur(10px);border-radius:14px;padding:12px 16px;box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:13px;line-height:1.5}
+  #journal[hidden]{display:none}
+  #journal h3{margin:0 0 8px;font-size:15px;color:#ffd48a} #journal h3 small{opacity:.7;font-weight:400;margin-left:6px}
+  #journal ul{list-style:none;margin:0;padding:0} #journal li{padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12);opacity:.75}
+  #journal li.got{opacity:1} #journal li.got b{color:#ffd48a} #journal li span{opacity:.85}
+  #journal .foot{margin-top:10px;font-size:12px;opacity:.85} #journal .foot span{display:inline-block;margin:0 3px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.08);opacity:.45}
+  #journal .foot span.on{opacity:1;background:#f2a24a;color:#2a1a0e} #journal .foot button{margin-left:8px;font-size:11px;padding:2px 8px}
+  #toast{position:fixed;left:50%;top:62px;transform:translate(-50%,-12px);opacity:0;pointer-events:none;z-index:7;text-align:center;
+    background:rgba(255,236,190,.95);color:#3a2412;padding:8px 18px;border-radius:14px;font-size:14px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.35);
+    transition:opacity .35s,transform .35s} #toast.show{opacity:1;transform:translate(-50%,0)} #toast small{opacity:.8}
+  #nudge{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);max-width:86vw;text-align:center;opacity:0;pointer-events:none;font-size:13px;
+    color:#ffe9c4;text-shadow:0 1px 6px rgba(0,0,0,.7);transition:opacity .8s} #nudge.show{opacity:.85}
+  #ring{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);width:56px;text-align:center;opacity:0;pointer-events:none;transition:opacity .4s;font-size:11px;color:#ffe9c4}
+  #ring.show{opacity:1} #ring svg{width:56px;height:56px;transform:rotate(-90deg)} #ring circle{fill:none;stroke-width:3.5}
+  #ring .bg{stroke:rgba(255,255,255,.18)} #ring .fg{stroke:#ffd48a;stroke-linecap:round;transition:stroke-dashoffset .12s linear}
+  #ring span{display:block;margin-top:-4px;text-shadow:0 1px 4px #000}
+  #ending{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:34px;box-sizing:border-box;pointer-events:none;opacity:0;transition:opacity 1.6s;z-index:4;
+    background:linear-gradient(to bottom,rgba(6,8,22,0) 35%,rgba(6,8,22,.8) 100%)}
+  #hud,#nudge{transition:opacity .8s} body.ending #hud{opacity:0;pointer-events:none}
+  #ending.show{opacity:1} #ending .box{text-align:center}
+  #ending .t{font-size:clamp(26px,3.6vw,40px);letter-spacing:.4em;text-indent:.4em;color:#ffe3a8;text-shadow:0 0 28px rgba(255,200,110,.55)}
+  #ending .l{margin-top:8px;font-size:clamp(15px,2.2vw,20px);color:#fff1d6;max-width:80vw;line-height:1.7}
+  #ending .n{margin-top:10px;font-size:13px;opacity:.7;letter-spacing:.12em}
 </style>
 </head>
 <body>
 <div id="stage"></div>
 <div id="vignette"></div>
 <div id="caption">合上的书 · 一道暖光从缝里漏出来</div>
-<div id="hint">H 隐藏/显示面板</div>
+<div id="hint">H 隐藏/显示面板 · M 静音 · J 手账 · 可以用鼠标摸摸小猫</div>
 <div id="hud">
   <div class="row">
     <span>0°</span>

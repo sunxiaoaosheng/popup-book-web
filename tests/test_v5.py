@@ -1,12 +1,12 @@
 """v5「清晨：窗后伸懒腰」自检（无头 Chrome + SwiftShader）：python tests/test_v5.py
-需要：本目录起静态服务 `python3 -m http.server 8123`。截图输出到 shots/v5/。
+需要：静态页在 POPUP_BASE（默认 http://127.0.0.1:8123/index.html）。截图输出到 shots/v5/。
 只验证逻辑与画面；真实合页传感器 / 真 GPU / 扬声器都未验证。"""
 import sys
 from playwright.sync_api import sync_playwright
 from PIL import Image
+from paths import BASE, shot_dir
 
-BASE = 'http://localhost:8123/index.html'
-OUT = '/workspace/popup-book/shots/v5'
+OUT = shot_dir('v5')
 ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox']
 results, errs = [], []
 def check(name, ok, info=''):

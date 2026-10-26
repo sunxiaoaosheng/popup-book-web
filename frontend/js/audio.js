@@ -75,7 +75,7 @@ export class Sound {
     Object.assign(this._env, env); this._t += dt;
     if (!this.ready) return;
     const c = this.ctx, now = c.currentTime;
-    if (this._t > 0.06) {                       // 约 16Hz 更新，避免堆积自动化事件
+    if (this._t > 0.1) {                        // 10Hz 更新，避免自动化事件把音频线程堆满
       this._t = 0;
       const e = this._env, winter = e.season === 3 ? 1.6 : 1;
       const wind = e.amb * (0.05 + 0.05 * (1 - e.night)) * winter * (e.wind || 1);

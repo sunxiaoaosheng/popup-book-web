@@ -1,11 +1,12 @@
 """v2 全量自检（无头 Chrome + SwiftShader）：python tests/test_v2.py
-需要：本目录起一个静态服务 `python3 -m http.server 8123`，以及装了 playwright 的 python。
+需要：静态页在 POPUP_BASE（默认 http://127.0.0.1:8123/index.html），例如
+`./start.sh --slider --port 8123 --no-docker`，以及装了 playwright 的 python。
 截图输出到 shots/v2/，末尾打印 PASS/FAIL 汇总；任何 JS 异常都会让整体失败。"""
 import json, subprocess, sys, time
 from playwright.sync_api import sync_playwright
+from paths import BASE, BRIDGE, python_cmd, shot_dir
 
-BASE = 'http://localhost:8123/index.html'
-OUT = '/workspace/popup-book/shots/v2'
+OUT = shot_dir('v2')
 ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox']
 results = []
 def check(name, ok, info=''):
@@ -135,7 +136,7 @@ with sync_playwright() as p:
     print(f'每帧 update（不含渲染）≈ {ms:.1f} ms'); pg.close()
 
     # ---------- 10. 假桥接 WebSocket ----------
-    br = subprocess.Popen(['/workspace/venv/bin/python', '/workspace/popup-book/bridge.py', '--fake'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    br = subprocess.Popen([python_cmd(), BRIDGE, '--fake'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     time.sleep(1.5)
     pg = new_page(b, 'nostore=1&hud=1'); pg.wait_for_timeout(3000)
     a1 = ev(pg, '__popup.S.target'); pg.wait_for_timeout(1200); a2 = ev(pg, '__popup.S.target')

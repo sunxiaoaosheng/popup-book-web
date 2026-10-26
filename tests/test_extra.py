@@ -1,6 +1,7 @@
 import subprocess, time, sys
 from playwright.sync_api import sync_playwright
-out='/workspace/popup-book/shots'
+from paths import BASE, shot_dir
+out = shot_dir()
 args=['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--no-sandbox']
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=args)
@@ -8,7 +9,7 @@ with sync_playwright() as p:
     errs=[]
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('response', lambda r: errs.append(f'HTTP {r.status} {r.url}') if r.status>=400 else None)
-    pg.goto('http://localhost:8123/index.html?ws=ws://localhost:1')
+    pg.goto(BASE + '?ws=ws://127.0.0.1:1')
     pg.wait_for_function('window.__popup')
     # closing: open to 100, then close down slowly -> yawn/sleep
     pg.evaluate('__popup.sweep(0,100,4)')

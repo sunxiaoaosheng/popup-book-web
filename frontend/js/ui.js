@@ -46,6 +46,7 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
   const ring = $('div', { id: 'ring' });
   ring.innerHTML = '<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" class="bg"/><circle cx="22" cy="22" r="18" class="fg"/></svg><span>别动…</span>';
   const fg = ring.querySelector('.fg'); const C = 2 * Math.PI * 18; fg.style.strokeDasharray = `${C}`;
+  let ringOn = false, ringOff = '';
 
   // ---- 晚安结尾 ----
   const ending = $('div', { id: 'ending' });
@@ -57,7 +58,12 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
       showToast(`✨ 发现小秘密 <b>${store.foundCount()}/${SECRETS.length}</b>　${s.name}<br><small>${s.found}</small>`);
     },
     toast: showToast,
-    setRing(p) { if (p < 0) { ring.classList.remove('show'); return; } ring.classList.add('show'); fg.style.strokeDashoffset = `${C * (1 - p)}`; },
+    setRing(p) {
+      if (p < 0) { if (ringOn) { ring.classList.remove('show'); ringOn = false; } return; }
+      if (!ringOn) { ring.classList.add('show'); ringOn = true; }
+      const off = (C * (1 - p)).toFixed(1);
+      if (off !== ringOff) { fg.style.strokeDashoffset = off; ringOff = off; }
+    },
     showEnding(o) {
       if (!o) { this.hideEnding(); return; }
       ending.innerHTML = `<div class="box"><div class="t">${o.title}</div><div class="l">${o.line}</div><div class="n">第 ${o.cycles} 次合上　·　${o.next}</div></div>`;

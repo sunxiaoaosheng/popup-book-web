@@ -1,0 +1,124 @@
+// 自动化测试用的 window.__popup。字段和 v6 保持一致。
+import { Sound } from './audio.js';
+import { lerp } from './math.js';
+import { step } from './sim.js';
+
+export function attachDebug(W, input) {
+  const { S } = W;
+  const v = W.tmp.v;
+  const cv = W.gfx.renderer.domElement;
+
+  function renderNow() {
+    W.gfx.forceShadow();
+    W.gfx.renderer.render(W.gfx.scene, W.gfx.camera);
+  }
+
+  const projectTo = (obj, dy = 0) => {
+    obj.getWorldPosition(v);
+    v.y += dy;
+    v.project(W.camera);
+    const r = cv.getBoundingClientRect();
+    return { x: (v.x + 1) / 2 * r.width + r.left, y: (1 - v.y) / 2 * r.height + r.top };
+  };
+
+  async function audioProbe() {
+    const res = {};
+    const render = async (name, fn) => {
+      const c = new OfflineAudioContext(1, 44100 * 3, 44100);
+      const s = new Sound();
+      s.attach(c);
+      fn(s);
+      const buf = await c.startRendering();
+      const d = buf.getChannelData(0);
+      let pk = 0, sq = 0;
+      for (let i = 0; i < d.length; i++) {
+        const x = Math.abs(d[i]);
+        if (x > pk) pk = x;
+        sq += d[i] * d[i];
+      }
+      res[name] = { peak: +pk.toFixed(4), rms: +Math.sqrt(sq / d.length).toFixed(4) };
+    };
+    await render('ambience+rustle', (s) => { s.setEnv({ amb: 1, night: 0, season: 0, speed: 90, wind: 1 }, 1); });
+    await render('meow', (s) => s.meow());
+    await render('mew', (s) => s.mew());
+    await render('purr', (s) => s.purr(true));
+    await render('hoot', (s) => s.hoot());
+    await render('flap', (s) => s.flap());
+    await render('chime', (s) => s.chime());
+    await render('shake', (s) => s.shake(0));
+    await render('thud', (s) => s.thud());
+    await render('lullaby', (s) => s.lullaby(3));
+    return res;
+  }
+
+  window.__popup = {
+    setAngle: input.setAngle,
+    S,
+    store: W.store,
+    sound: W.sound,
+    ui: W.ui,
+    audioProbe,
+    settle(sec = 4) {
+      const n = sec * 60;
+      for (let i = 0; i < n; i++) step(W, 1 / 60);
+      renderNow();
+      input.refreshHud();
+    },
+    sweep(from, to, sec) {
+      const n = Math.max(1, Math.round(sec * 60));
+      for (let i = 0; i <= n; i++) {
+        input.setAngle(lerp(from, to, i / n));
+        step(W, 1 / 60);
+      }
+      renderNow();
+    },
+    wiggle(center, amp, freq, sec) {
+      const n = Math.round(sec * 60);
+      for (let i = 0; i <= n; i++) {
+        input.setAngle(center + amp * Math.sin(2 * Math.PI * freq * i / 60));
+        step(W, 1 / 60);
+      }
+      input.setAngle(center);
+      renderNow();
+    },
+    forceSeason(i) { W.setSeason(i, true); },
+    render() { renderNow(); },
+    project(name) {
+      const o = {
+        kitten: [W.kitten, 0.35],
+        owl: [W.owl, 0.3],
+        tree: [W.owlTree.g, W.owlTree.h * 0.4],
+      }[name];
+      return projectTo(o[0], o[1]);
+    },
+    dbg() {
+      const sun = W.gfx.sun;
+      const SEASON = W.SEASON;
+      return {
+        A: +S.filtered.toFixed(2), sp: +S.sp.toFixed(1), season: S.season, shy: +S.shy.toFixed(2),
+        napP: +S.napP.toFixed(2), chaseP: +S.chaseP.toFixed(2), flutT: +S.flutT.toFixed(2),
+        burstT: +S.burstT.toFixed(2), owl: W.O.state, owlVisible: W.owl.visible, kittenVisible: W.kitten.visible,
+        act: { ...S.act }, seamEye: +(S.seamEye || 0).toFixed(2),
+        holdT: +S.hold.t.toFixed(2), holdBand: S.hold.band, found: W.store.foundCount(), cycles: W.store.cycles,
+        petE: +S.petE.toFixed(2), ending: S.endMode,
+        sunU: +S.dayU.toFixed(3), sunVisible: W.paperSun.visible,
+        sunPos: W.paperSun.position.toArray().map((x) => +x.toFixed(2)),
+        light: sun.position.toArray().map((x) => +x.toFixed(2)),
+        sunI: +sun.intensity.toFixed(2), tod: S.tod, sky: '#' + W.skyMat.color.getHexString(),
+        horizon: +W.horizonMat.opacity.toFixed(2),
+        run: { ...S.run, t0: undefined, dur: +S.run.dur.toFixed(2) },
+        conP: +S.conP.toFixed(2), conVisible: W.catStars.visible,
+        watchW: +S.watchW.toFixed(2), noonW: +S.noonW.toFixed(2), sneezes: S.sneezes,
+        sneeze: +(S.sneeze || 0).toFixed(2), lookX: +S.lookX.toFixed(2), lookY: +S.lookY.toFixed(2), caption: S.cap,
+        dawnStretch: +S.dawnW.toFixed(2), dawnPose: +(S.dawnStretch || 0).toFixed(2),
+        dawnHeld: !!S.dawnHeld, dawnSaid: !!S.dawnSaid, period: S.tod,
+        seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
+        seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
+        kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
+        events: W.sound.events.slice(-14),
+        trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
+        net: { connects: W.net.connects, coalesced: W.net.coalesced },
+      };
+    },
+  };
+}

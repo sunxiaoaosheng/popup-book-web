@@ -1,0 +1,10 @@
+.git
+.venv
+backend/.venv
+__pycache__
+*.pyc
+node_modules
+shots
+.run
+tests
+*.md

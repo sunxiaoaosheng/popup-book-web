@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>林间小屋 · 立体翻翻书</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="vignette"></div>
+<div id="caption">合上的书 · 一道暖光从缝里漏出来</div>
+<div id="hint">H 隐藏/显示面板 · M 静音 · J 手账 · 可以用鼠标摸摸小猫</div>
+<div id="hud">
+  <div class="row">
+    <span>0°</span>
+    <input id="slider" type="range" min="0" max="130" step="0.1" value="0">
+    <span>130°</span>
+    <span id="angle">0.0°</span>
+  </div>
+  <div id="src">
+    <span><span id="dot"></span><span id="srcText">模拟模式（拖动滑块）</span></span>
+    <span>
+      <button id="auto" class="ghost">▶ 自动演示</button>
+    </span>
+  </div>
+</div>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

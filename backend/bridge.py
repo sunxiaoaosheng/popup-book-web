@@ -61,8 +61,9 @@ class PyBookLidSource:
         except Exception as e:  # ImportError，或 hidapi 动态库缺失
             raise RuntimeError(
                 f"无法导入 pybooklid：{e}\n"
-                "  请执行：pip install pybooklid websockets\n"
-                "  若提示找不到 hidapi：brew install hidapi"
+                "  请执行：pip install -r backend/requirements-sensor.txt\n"
+                "  若提示找不到 hidapi：brew install hidapi\n"
+                "  或直接 ./start.sh --sensor"
             )
         from pybooklid import LidSensor, LidSensorError
 
@@ -148,8 +149,17 @@ async def main_async(args):
         try:
             websockets.broadcast(set(clients), msg)
         except AttributeError:  # 非常老的版本
+            dead = []
             for c in list(clients):
-                asyncio.ensure_future(c.send(msg))
+                try:
+                    asyncio.ensure_future(c.send(msg))
+                except Exception:
+                    dead.append(c)
+            for c in dead:
+                clients.discard(c)
+        except Exception as e:
+            # 单个断开的客户端不能把广播循环打死
+            print(f"[bridge] 广播失败：{e}", file=sys.stderr)
 
     interval = 1.0 / args.hz
     smoothed = None

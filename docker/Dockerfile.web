@@ -1,0 +1,6 @@
+FROM python:3.12-alpine
+# 只提供 frontend/ 静态文件。网页根就是这本书，所以 index.html 在 /。
+WORKDIR /srv
+COPY frontend/ /srv/
+EXPOSE 8000
+CMD ["python3", "-m", "http.server", "8000", "--bind", "0.0.0.0", "--directory", "/srv"]

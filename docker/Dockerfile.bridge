@@ -1,0 +1,8 @@
+FROM python:3.12-alpine
+# 假角度桥。真实 MacBook 合页是 HID，不能放进这个容器。
+WORKDIR /app
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY backend/bridge.py /app/bridge.py
+EXPOSE 8765
+ENTRYPOINT ["python3", "/app/bridge.py", "--fake", "--host", "0.0.0.0"]

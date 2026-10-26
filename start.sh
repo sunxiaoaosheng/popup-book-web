@@ -111,7 +111,10 @@ ws_probe() {
   python3 - "$port" "$want" <<'PY'
 import socket, sys
 port, want = int(sys.argv[1]), sys.argv[2]
-s = socket.create_connection(("127.0.0.1", port), 2)
+try:
+    s = socket.create_connection(("127.0.0.1", port), 2)
+except OSError:
+    sys.exit(1)
 s.settimeout(2)
 key = "dGhlIHNhbXBsZSBub25jZQ=="
 req = (

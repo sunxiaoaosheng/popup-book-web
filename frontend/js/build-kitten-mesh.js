@@ -1,6 +1,6 @@
 // 小猫纸模、四季行头、窗台道具、蝴蝶。由 buildCabin 调用，几何只建一次。
 import * as THREE from '../vendor/three.module.js';
-import { cut, polyShape, rectShape, ellipseShape, glowTex } from './materials.js';
+import { cut, box, polyShape, rectShape, ellipseShape, glowTex } from './materials.js';
 import { FONT } from './state.js';
 
 const FUR = '#f2a24a', FUR_D = '#c9722a', CREAM = '#fff0d6', PINK = '#f6a7b3', INK = '#2b1b14';

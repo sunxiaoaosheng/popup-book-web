@@ -8,6 +8,7 @@ export const SECRETS = [
   { id: 'owl', name: '受惊的猫头鹰', hint: '林子里还有一位邻居，它不喜欢太猛的动作。', found: '开得太猛，把猫头鹰吓飞了。' },
   { id: 'shake', name: '抖落一身', hint: '书页很轻。来回晃一晃，看看树上有什么。', found: '你把树上的东西全晃下来了。' },
   { id: 'chase', name: '追萤火虫', hint: '夜深了，萤火虫出来之后，在那里多停一会儿。', found: '小猫跳下窗台，追着萤火虫跑。' },
+  { id: 'fullday', name: '陪它过完一整天', hint: '从天亮到天黑，慢慢来。别回头，也别着急。', found: '天上多了一只猫，以后每个夜晚都在。' },
   { id: 'goodnight', name: '晚安', hint: '合上书的方式，决定了它怎么说晚安。', found: '你轻轻合上了书，它回了你一句晚安。' },
 ];
 
@@ -42,4 +43,7 @@ export const TUNING = {
   gentleBelow: 45,    // 合盖过程中最大角速度低于此：算"轻轻合上"
   holdSeconds: 3,     // 停住多久触发隐藏剧情
   holdTol: 2.2,       // 判定"停住"的角度容差（度）
+  // v4「一整天」：从 dayStart 以下开始，不回头（回退不超过 dayBackTol 度）、不猛开，一路开到 dayEnd，用时 ≥ daySeconds
+  dayStart: 30, dayEnd: 122, dayBackTol: 5, daySeconds: 9,
+  sneezeEvery: 6.5,   // 正午小猫打喷嚏的间隔（秒）
 };

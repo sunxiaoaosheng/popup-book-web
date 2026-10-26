@@ -112,7 +112,7 @@ with sync_playwright() as p:
     pg.goto(f'{BASE}'); pg.wait_for_function('window.__popup'); d2 = dbg(pg)
     check('刷新后 次数/小秘密/季节 都还在', d2['cycles'] == 1 and d2['found'] == f0 and d2['season'] == 1 and f0 >= 1, f"{d2['cycles']},{d2['found']},{d2['season']}")
     pg.click('#jbtn'); shot(pg, 'journal_panel')
-    check('手账面板显示发现数', f'{f0} / 7' in pg.inner_text('#journal'))
+    check('手账面板显示发现数', f'{f0} / 8' in pg.inner_text('#journal'))
     pg.click('#jbtn')
     pg.click('#snd'); check('音效按钮可静音并写入存档', ev(pg, '__popup.store.muted === true && __popup.sound.muted === true'))
     pg.goto(f'{BASE}'); pg.wait_for_function('window.__popup'); check('静音状态刷新后保留', ev(pg, '__popup.sound.muted === true'))

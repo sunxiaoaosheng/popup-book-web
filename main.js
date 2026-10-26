@@ -314,6 +314,33 @@ const DAWN_SKY = new THREE.Color('#f3c7d6'), DAWN_GLOW = new THREE.Color('#ff9fb
 const SUN_LOW = new THREE.Color('#ff9d5c');
 const TIMES = [[0, '清晨'], [0.2, '上午'], [0.4, '正午'], [0.6, '午后'], [0.8, '黄昏']];
 
+/* ---- v4「陪它过完一整天」：从合着开始，不回头、不着急地一路开到天黑，天上就会多出一只"猫座" ----
+   之后每个夜晚它都在（存档记住）。星座由纸星星 + 压痕连线组成，第一次出现时一颗一颗亮起来。 */
+const CON = { x: -2.75, y: 4.45, s: 1.05 };
+const CON_PTS = [[-0.55, 0.8], [-0.3, 0.52], [-0.05, 0.8], [0.02, 0.38], [-0.32, 0.12], [0.5, 0.08], [0.72, -0.45], [-0.18, -0.5], [1.18, -0.08]];
+const CON_SEG = [[0, 1], [1, 2], [2, 3], [0, 4], [3, 5], [5, 6], [6, 7], [7, 4], [6, 8]];
+const catStars = new THREE.Group(); catStars.position.set(CON.x, CON.y, 0.07); catStars.scale.setScalar(CON.s); backFace.add(catStars);
+{
+  const star = (R, r) => { const p = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r : R; p.push([Math.cos(a) * rr, Math.sin(a) * rr]); } return polyShape(p); };
+  const m0 = new THREE.MeshBasicMaterial({ color: '#fff6c8' });
+  const lineM = new THREE.MeshBasicMaterial({ color: '#fff3c0', transparent: true, opacity: 0, depthWrite: false });
+  catStars.userData = { pts: [], lines: [], lineM };
+  CON_PTS.forEach(([x, y], i) => {
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(star(1, 0.45), { depth: 0.03, bevelEnabled: false }), [m0, edgeMat]);
+    m.position.set(x, y, 0.01); m.scale.setScalar(0.0001); m.userData = { s: i === 1 || i === 6 ? 0.19 : 0.14, i };
+    catStars.add(m); catStars.userData.pts.push(m);
+  });
+  for (const [a, b] of CON_SEG) {
+    const [x0, y0] = CON_PTS[a], [x1, y1] = CON_PTS[b], len = Math.hypot(x1 - x0, y1 - y0);
+    // 压痕虚线：一串小点
+    const g = new THREE.Group(); const n = Math.max(3, Math.round(len / 0.09));
+    for (let k = 1; k < n; k++) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.03, 6), lineM); d.position.set(lerp(x0, x1, k / n), lerp(y0, y1, k / n), 0); g.add(d); }
+    catStars.add(g); catStars.userData.lines.push(g);
+  }
+  catStars.visible = false;
+}
+const inConArea = (x, y) => Math.abs(x - (CON.x + 0.3)) < 1.25 && Math.abs(y - CON.y) < 1.05;
+
 // 书脊暖光缝（合上时漏光）
 const seamGlow = new THREE.Mesh(new THREE.PlaneGeometry(PW, 1), addMat('#ffb050', 0));
 seamGlow.position.set(0, 0.5, PH + 0.02); book.add(seamGlow);
@@ -756,6 +783,7 @@ const S = {
   act: { seam: false, nap: false, chase: false },
   armed: false, closing: false, closeMax: 0, ending: 0, slamT: 0,
   eggT: 0, lookX: 0, lookY: 0, mouseT: -99, mouseX: 0, mouseY: 0, hover: '', nudgeT: 0,
+  run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 }, conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,
   cap: '', capUntil: 0, kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
 };
 const caption = document.getElementById('caption');
@@ -887,7 +915,7 @@ function update(dt) {
     if (Math.abs(A - H.anchor) > TUNING.holdTol) {
       H.anchor = A; H.t = 0; H.fired = false;
     } else H.t += dt;
-    H.band = (H.anchor > 4 && H.anchor < 16) ? 'seam' : (H.anchor > 52 && H.anchor < 72 && cabinP > 0.9) ? 'nap' : (H.anchor > 100 && H.anchor < 124) ? 'chase' : '';
+    H.band = (H.anchor > 4 && H.anchor < 16) ? 'seam' : (H.anchor > 52 && H.anchor < 72 && cabinP > 0.9) ? 'nap' : (H.anchor > 109 && H.anchor < 124) ? 'chase' : '';
     const ring = H.band && !H.fired && H.t > 0.9 ? clamp((H.t - 0.9) / (TUNING.holdSeconds - 0.9), 0, 1) : -1;
     ui.setRing(ring);
     if (H.band && !H.fired && H.t >= TUNING.holdSeconds) {
@@ -899,6 +927,26 @@ function update(dt) {
     if (S.act.seam && !(A > 2.5 && A < 18)) S.act.seam = false;
     if (S.act.nap && !(A > 47 && A < 76) ) { S.act.nap = false; if (S.purring && !S.petDown) { sound.purr(false); S.purring = false; } }
     if (S.act.chase && !(A > 96 && A < 131)) S.act.chase = false;
+  }
+
+  // --- v4：陪它过完一整天（从缝隙一路慢慢开到天黑，中途不回头、不猛开） ---
+  {
+    const R = S.run;
+    if (A < TUNING.dayStart) { R.on = true; R.t0 = T; R.max = A; R.bad = ''; R.done = false; S.sunsetSaid = false; S.sneezeSaid = false; }
+    else if (R.on && !R.done) {
+      if (A > R.max) R.max = A;
+      if (A < R.max - TUNING.dayBackTol) R.bad = 'back';
+      if (S.sp > TUNING.fastAbove) R.bad = 'fast';
+      if (A >= TUNING.dayEnd) {
+        R.done = true; R.dur = T - R.t0;
+        if (!R.bad && R.dur >= TUNING.daySeconds) {
+          const first = discover('fullday');
+          S.conBurst = 1;
+          say(first ? '你陪小猫慢慢过完了一整天——天上多了一只猫' : '又是完整的一天 · 猫座在等你', 5);
+        } else if (!R.bad && R.dur >= TUNING.daySeconds * 0.45) say('这一天…过得有点快', 2.6);
+      }
+    }
+    if (S.conBurst > 0) S.conBurst = Math.max(0, S.conBurst - dt / 6);
     if (S.napLock > 0) { S.napLock -= dt; }
   }
 
@@ -950,6 +998,7 @@ function update(dt) {
   horizonMat.color.lerpColors(DAWN_GLOW, DUSK_GLOW, sstep(0.3, 0.7, uc));
   horizonMat.opacity = Math.max(0.55 * dawnP, 0.85 * goldP) * (1 - nightP);
   paperSun.userData.halo.material.opacity = 0.32 + 0.3 * lowP;
+  S.dayC = uc; S.goldP = goldP; S.nightP = nightP;
   S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : TIMES.filter(([u0]) => uc >= u0).pop()[1]);
   scene.background.set('#2a211b').lerp(tmpC.set('#10162b'), nightP * 0.6);
 
@@ -1067,13 +1116,23 @@ function update(dt) {
         ry = clamp(S.kvx * 0.35, -0.5, 0.5) * chE; rz += clamp(-S.kvx * 0.12, -0.25, 0.25) * chE;
         lx = lerp(lx, clamp((fx - S.kx) * 1.4, -1, 1), chE); ly = lerp(ly, clamp((fy - 0.6 - gy) * 1.2, -1, 1), chE);
       }
+      // v4：小猫的一天——黄昏转头看太阳落山，夜里看月亮
+      const watchT = (peekP > 0.6 && chE < 0.1 && ((goldP > 0.35 && paperSun.visible) || (nightP > 0.5 && moon.visible))) ? 1 : 0;
+      S.watchW = smooth(S.watchW, watchT, dt, 0.5);
+      if (S.watchW > 0.01) {
+        (nightP > 0.5 ? moon : paperSun).getWorldPosition(_v2); _v2.project(camera);
+        K.head.getWorldPosition(_v).project(camera);
+        const wx = clamp((_v2.x - _v.x) * 2.2, -1, 1), wy = clamp((_v2.y - _v.y) * 1.6, -1, 1);
+        lx = lerp(lx, wx, S.watchW); ly = lerp(ly, wy, S.watchW);
+      }
+      if (watchT && goldP > 0.35) { S.sunsetT += dt; if (S.sunsetT > 2 && !S.sunsetSaid) { S.sunsetSaid = true; say('黄昏 · 小猫转过头，静静看着太阳落山', 3.5); } } else S.sunsetT = 0;
     }
     // 鼠标视线（有人在晃鼠标时，猫看你）；害羞时偶尔别开脸
     if (mouseLook && !napVis && chE < 0.5) {
       K.head.getWorldPosition(_v).project(camera);
       lx = clamp((S.mouseX - _v.x) * 2.4, -1, 1); ly = clamp((S.mouseY - _v.y) * 2.4, -1, 1);
       if (S.shy > 0.5) { const away = Math.sin(T * 0.8) > 0.55; if (away) { lx = -0.8; ly = -0.2; } }
-    } else if (S.shy > 0.5 && !napVis) { lx = Math.sin(T * 0.8) > 0.6 ? -0.8 : 0.5; }
+    } else if (S.shy > 0.5 && !napVis && S.watchW < 0.5) { lx = Math.sin(T * 0.8) > 0.6 ? -0.8 : 0.5; }
     kitten.position.set(px, py, pz);
     kitten.scale.set(sxs, sys, Math.min(sxs, sys)); kitten.rotation.z = rz + (shiver ? 0.012 * Math.sin(T * 48) : 0); kitten.rotation.y = ry;
     S.lookX = smooth(S.lookX, napVis ? 0 : lx, dt, 0.12); S.lookY = smooth(S.lookY, napVis ? 0 : ly, dt, 0.12);
@@ -1103,6 +1162,21 @@ function update(dt) {
       const eye = K.eyes[i]; eye.scale.set(wide, Math.max(0.08, open) * wide, 1);
       eye.position.x = (i ? 1 : -1) * 0.105 + S.lookX * 0.02; eye.position.y = 0.015 + S.lookY * 0.016;
     }
+    // v4：正午太阳太晃眼——眯眼，隔一会儿打个小喷嚏
+    const noonT = (!napVis && chE < 0.1 && nightP < 0.2 && S.dayC > 0.4 && S.dayC < 0.75 && paperSun.visible && peekP > 0.6) ? 1 : 0;
+    S.noonW = smooth(S.noonW, noonT, dt, 0.6);
+    let sneeze = 0;
+    if (S.noonW > 0.6) {
+      S.sneezeT += dt; const c = S.sneezeT % TUNING.sneezeEvery;
+      if (c < dt && S.sneezeT > dt) { S.sneezes++; sound.mew(); sound.log('sneeze'); if (!S.sneezeSaid) { S.sneezeSaid = true; say('正午的太阳太亮了，小猫打了个小喷嚏', 3); } }
+      sneeze = S.sneezeT > TUNING.sneezeEvery ? Math.max(0, Math.sin(Math.PI * clamp(c / 0.5, 0, 1))) * (c < 0.5 ? 1 : 0) : 0;
+    } else S.sneezeT = Math.min(S.sneezeT, TUNING.sneezeEvery - 1.2);
+    S.sneeze = sneeze;
+    if (S.noonW > 0.01) {
+      for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * lerp(1, 0.45, S.noonW) * (1 - 0.9 * sneeze));
+      K.head.rotation.x += 0.35 * sneeze; K.head.position.y -= 0.05 * sneeze; K.body.scale.y *= 1 - 0.06 * sneeze;
+      if (sneeze > 0.3) { K.mouth.visible = true; K.mouthLine.visible = false; K.mouth.scale.set(1, 0.35 * sneeze, 1); }
+    }
     const blush = clamp(Math.max(S.shy * 0.9, S.petE, eggP * 0.8), 0, 1);
     for (const b of K.blush) b.material.opacity = blush * 0.75;
     K.heart.visible = eggP > 0.03;
@@ -1119,7 +1193,7 @@ function update(dt) {
     if (peekP > 0.5 && S.prevPeek <= 0.5 && S.shy > 0.5) sound.mew();
     if (hopP > 0.5 && S.prevHop <= 0.5) sound.meow(1, 0.55, 0.4);
     S.prevPeek = peekP; S.prevHop = hopP;
-  } else { S.prevPeek = peekP; S.prevHop = hopP; kleaf.visible = false; }
+  } else { S.prevPeek = peekP; S.prevHop = hopP; kleaf.visible = false; S.noonW = smooth(S.noonW, 0, dt, 0.3); S.watchW = smooth(S.watchW, 0, dt, 0.3); S.sunsetT = 0; }
   // 抚摸：爱心 + 呼噜
   if (S.petDown) {
     S.petT += dt; S.heartCd = (S.heartCd || 0) - dt;
@@ -1177,10 +1251,26 @@ function update(dt) {
   }
 
   // --- 云、月、星、萤火虫 ---
-  clouds.forEach((c) => { c.position.x = c.userData.x + Math.sin(T * c.userData.s + c.userData.ph) * 0.35; });
+  clouds.forEach((c) => {
+    c.position.x = c.userData.x + Math.sin(T * c.userData.s + c.userData.ph) * 0.35;
+    // v4：猫座出现时，挡在它前面的云会散开
+    c.userData.sc ??= c.scale.x; c.userData.inCon ??= inConArea(c.userData.x + 0.35 * c.userData.sc, c.position.y);
+    const k = c.userData.inCon ? 1 - S.conP : 1; c.scale.setScalar(Math.max(0.0001, c.userData.sc * k)); c.visible = k > 0.01;
+  });
   moon.visible = moonP > 0.002; moon.position.set(2.9, lerp(0.9, 4.75, moonP), 0);
+  // v4 猫座：发现过"一整天"之后，每晚都在；刚发现时一颗一颗亮起来
+  const conOn = store.hasSecret('fullday') && nightP > 0.45 ? 1 : 0;
+  S.conP = clamp(S.conP + dt / (S.conBurst > 0 ? 3.2 : 1.4) * (conOn ? 1 : -1), 0, 1);
+  catStars.visible = S.conP > 0.003;
+  if (catStars.visible) {
+    const { pts, lines, lineM } = catStars.userData, n = pts.length;
+    for (const m of pts) { const k = sstep(m.userData.i / n * 0.7, m.userData.i / n * 0.7 + 0.25, S.conP); m.scale.setScalar(Math.max(0.0001, m.userData.s * k * (1 + 0.15 * Math.sin(T * 2.2 + m.userData.i)))); m.rotation.z = 0.2 * Math.sin(T * 0.5 + m.userData.i); }
+    lineM.opacity = 0.55 * sstep(0.75, 1, S.conP) * (0.85 + 0.15 * Math.sin(T * 1.3)) * (1 + 0.6 * S.conBurst);
+    for (const l of lines) l.visible = lineM.opacity > 0.01;
+  }
   stars.forEach((s) => {
-    const p = s.userData.spr.step(sstep(s.userData.t0, s.userData.t0 + 5, A), dt);
+    s.userData.inCon ??= inConArea(s.position.x, s.position.y);
+    const p = s.userData.spr.step(sstep(s.userData.t0, s.userData.t0 + 5, A) * (s.userData.inCon ? 1 - S.conP : 1), dt);
     s.visible = p > 0.01;
     const tw = 1 + 0.18 * Math.sin(T * 2.5 + s.userData.ph);
     s.scale.setScalar(Math.max(0.0001, s.userData.s * clamp(p, 0, 1.4) * tw)); s.rotation.z = Math.sin(T * 0.4 + s.userData.ph) * 0.2;
@@ -1400,6 +1490,7 @@ window.__popup = {
       burstT: +S.burstT.toFixed(2), owl: O.state, owlVisible: owl.visible, kittenVisible: kitten.visible, act: { ...S.act }, seamEye: +(S.seamEye || 0).toFixed(2),
       holdT: +S.hold.t.toFixed(2), holdBand: S.hold.band, found: store.foundCount(), cycles: store.cycles, petE: +S.petE.toFixed(2), ending: S.endMode,
       sunU: +S.dayU.toFixed(3), sunVisible: paperSun.visible, sunPos: paperSun.position.toArray().map((x) => +x.toFixed(2)), light: sun.position.toArray().map((x) => +x.toFixed(2)), sunI: +sun.intensity.toFixed(2), tod: S.tod, sky: '#' + skyMat.color.getHexString(), horizon: +horizonMat.opacity.toFixed(2),
+      run: { ...S.run, t0: undefined, dur: +S.run.dur.toFixed(2) }, conP: +S.conP.toFixed(2), conVisible: catStars.visible, watchW: +S.watchW.toFixed(2), noonW: +S.noonW.toFixed(2), sneezes: S.sneezes, sneeze: +(S.sneeze || 0).toFixed(2), lookX: +S.lookX.toFixed(2), lookY: +S.lookY.toFixed(2), caption: S.cap,
       kittenPos: kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover, events: sound.events.slice(-14),
       trees: trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
     };

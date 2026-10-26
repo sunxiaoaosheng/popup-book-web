@@ -1,5 +1,21 @@
 # 更新记录
 
+## v6 —— 开着时换季（2026-10-26）
+
+### 新增
+- **开着时可见的季节过渡**：合上书仍会推进季节（存档/次数逻辑不变），但树色、天空、道具、行头、粒子不再在合着时用墙钟跑完。下次打开，约 22–65° 用**开盖进度**驱动 `SEASON.t`：慢开能看见春→夏（或夏→秋…）展开，猛开越过区间也会一次完成。
+- 换季带内出一次字幕「春 → 夏 · 换季了」（用 `SEASONS` 的短名；不是新秘密，手账仍 8 条）。换季进行中不抢清晨伸懒腰字幕。
+- `TUNING` 新增 `seasonMorphLo / seasonMorphHi`；`__popup.dbg()` 新增 `seasonFrom / seasonTo / seasonT / seasonMorphing / seasonMorphSaid`。
+- 新测试 `tests/test_v6.py`（25 项断言 + 截图到 `shots/v6/`）。
+
+### 变更
+- `setSeason(i)` 非 instant 时封面先留在旧季；`applySeasonVisuals` 按 morph 进度交叉切换窗台道具/小猫行头/花/粒子。
+- `?season=` / `forceSeason` 仍瞬间切完；清晨伸懒腰、正午喷嚏、黄昏看日落、fullday 猫座逻辑保持。
+
+### 已知不足
+- 春→夏树色差偏小，秋/冬更好认。
+- morph 带与清晨带重叠；真机手感未测。
+
 ## v5 —— 清晨：窗后伸懒腰（2026-10-26）
 
 ### 新增

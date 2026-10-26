@@ -761,17 +761,50 @@ function applySeasonColors() {
   for (const { m, cols } of seasonMats) m.color.lerpColors(cols[SEASON.from], cols[SEASON.to], e);
 }
 const flowerGroups = []; floorFace.children.forEach((c) => { if (c.isGroup) flowerGroups.push(c); });
+let lastCoverSeason = -1;
+/** 按 SEASON.t 更新道具/行头/花/粒子/封面；换季中途交叉淡入，合着时封面仍是旧季。 */
+function applySeasonVisuals() {
+  applySeasonColors();
+  const from = SEASON.from, to = SEASON.to;
+  const e = SEASON.t * SEASON.t * (3 - 2 * SEASON.t);
+  const done = from === to || SEASON.t >= 0.999;
+  if (done) {
+    SEASON.t = 1; SEASON.from = to;
+    accs.forEach((a, k) => { a.visible = k === to; });
+    props.forEach((p, k) => { p.visible = k === to; });
+    flowerGroups.forEach((f, k) => { f.visible = to <= 1 || (to === 2 && k % 3 === 0); });
+    if (partSeason !== to) setParticleSeason(to);
+    if (lastCoverSeason !== to) { drawCover(to, store.cycles, store.foundCount()); lastCoverSeason = to; }
+    return;
+  }
+  accs.forEach((a, k) => { a.visible = (k === from && e < 0.72) || (k === to && e > 0.28); });
+  props.forEach((p, k) => { p.visible = (k === from && e < 0.72) || (k === to && e > 0.28); });
+  // 花：按加权偏向当前视觉季节
+  const vis = e < 0.5 ? from : to;
+  flowerGroups.forEach((f, k) => { f.visible = vis <= 1 || (vis === 2 && k % 3 === 0); });
+  const partTarget = e < 0.38 ? from : to;
+  if (partSeason !== partTarget) setParticleSeason(partTarget);
+  const coverI = e < 0.82 ? from : to;
+  if (lastCoverSeason !== coverI) { drawCover(coverI, store.cycles, store.foundCount()); lastCoverSeason = coverI; }
+}
+/** 某季节在当前 morph 中的权重（0..1），给蝴蝶/行为用。 */
+function seasonWeight(s) {
+  if (SEASON.from === SEASON.to || SEASON.t >= 1) return S.season === s ? 1 : 0;
+  if (SEASON.to === s) return SEASON.t;
+  if (SEASON.from === s) return 1 - SEASON.t;
+  return 0;
+}
 function setSeason(i, instant = false) {
   if (!seasonMats.length) initSeasonMats();
   i = ((i % 4) + 4) % 4;
-  if (instant) { SEASON.from = SEASON.to = i; SEASON.t = 1; } else { SEASON.from = SEASON.to; SEASON.to = i; SEASON.t = 0; }
+  if (instant) {
+    SEASON.from = SEASON.to = i; SEASON.t = 1; S.seasonMorphSaid = false;
+  } else {
+    // v6：合上推进季节，但视觉停在 t=0；下次开盖用角度驱动 morph
+    SEASON.from = SEASON.to; SEASON.to = i; SEASON.t = 0; S.seasonMorphSaid = false;
+  }
   S.season = i;
-  accs.forEach((a, k) => { a.visible = k === i; });
-  props.forEach((p, k) => { p.visible = k === i; });
-  flowerGroups.forEach((f, k) => { f.visible = i <= 1 || (i === 2 && k % 3 === 0); });
-  setParticleSeason(i);
-  applySeasonColors();
-  drawCover(i, store.cycles, store.foundCount());
+  applySeasonVisuals();
 }
 
 /* ============================================================ 状态 */
@@ -793,7 +826,7 @@ const S = {
   act: { seam: false, nap: false, chase: false },
   armed: false, closing: false, closeMax: 0, ending: 0, slamT: 0,
   eggT: 0, lookX: 0, lookY: 0, mouseT: -99, mouseX: 0, mouseY: 0, hover: '', nudgeT: 0,
-  run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 }, conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false, dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0,
+  run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 }, conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false, dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0, seasonMorphSaid: false,
   cap: '', capUntil: 0, kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
 };
 const caption = document.getElementById('caption');
@@ -934,7 +967,10 @@ function update(dt) {
       H.fired = true;
       if (H.band === 'dawn') {
         S.dawnHeld = true;
-        if (!S.dawnSaid) { S.dawnSaid = true; say('清晨 · 窗边伸了个懒腰', 3.5); sound.mew(); }
+        // v6：换季 morph 进行中时把字幕让给「春 → 夏 · 换季了」，天亮伸懒腰下一轮再说
+        if (!S.dawnSaid && !(SEASON.t < 1 && SEASON.from !== SEASON.to)) {
+          S.dawnSaid = true; say('清晨 · 窗边伸了个懒腰', 3.5); sound.mew();
+        }
       } else {
         S.act[H.band] = true;
         if (H.band === 'seam') { discover('seam'); sound.mew(); say('缝里有一双眼睛，在偷看你…', 4); }
@@ -988,8 +1024,18 @@ function update(dt) {
     for (const e of seamEyes.userData.eyes) for (const c of e.g.children) c.material.opacity = S.seamEye;
   }
 
-  // --- 季节配色 / 灯光（日 -> 夜） ---
-  if (SEASON.t < 1) { SEASON.t = Math.min(1, SEASON.t + dt / 2.2); applySeasonColors(); }
+  // --- 季节配色 / 灯光（日 -> 夜）；v6：合上后的换季由开盖角度驱动，合着时不跑完 ---
+  if (SEASON.t < 1) {
+    const lo = TUNING.seasonMorphLo, hi = TUNING.seasonMorphHi;
+    if (A >= lo) {
+      const p = clamp((A - lo) / Math.max(1e-3, hi - lo), 0, 1);
+      if (p > SEASON.t) { SEASON.t = p; applySeasonVisuals(); }
+      if (!S.seasonMorphSaid && SEASON.from !== SEASON.to) {
+        S.seasonMorphSaid = true;
+        say(`${SEASONS[SEASON.from].name} → ${SEASONS[SEASON.to].name} · 换季了`, 4.2);
+      }
+    }
+  }
   const SK = SKY[SEASON.to], SF = SKY[SEASON.from], se = SEASON.t;
   const mixC = (key, out) => out.lerpColors(SF[key], SK[key], se);
   // v3：太阳沿弧线走（带一点纸片过冲），光的方向、颜色、强度都跟着它
@@ -1083,7 +1129,7 @@ function update(dt) {
   const dawnVis = S.dawnW > 0.04;
   const showK = baseVis || napVis || dawnVis;
   kitten.visible = showK;
-  const seasonI = S.season;
+  const seasonI = (SEASON.t < 0.5 ? SEASON.from : SEASON.to);
   let lx = 0, ly = 0, pounce = 0, lick = 0, shiver = 0;
   if (showK) {
     const sleepish = Math.max(sleepyP, napE);
@@ -1267,7 +1313,7 @@ function update(dt) {
     h.m.quaternion.copy(camera.quaternion);
   }
   // 蝴蝶（春）
-  bfly.visible = seasonI === 0 && cabinE > 0.9 && A > 62 && A < 128 && !napVis && S.chaseP < 0.5;
+  bfly.visible = seasonWeight(0) > 0.35 && cabinE > 0.9 && A > 62 && A < 128 && !napVis && S.chaseP < 0.5;
   if (bfly.visible) {
     const u = T * 0.7; bfly.position.set(0.15 + 0.95 * Math.sin(u) + 0.2 * Math.sin(u * 2.7), 1.45 + 0.45 * Math.sin(u * 1.3 + 1) + 0.12 * Math.sin(T * 9), 0.7 + 0.3 * Math.cos(u));
     const fl = Math.abs(Math.sin(T * 14)); bfly.userData.wings[0].rotation.y = -fl * 1.2; bfly.userData.wings[1].rotation.y = fl * 1.2; bfly.rotation.z = 0.3 * Math.cos(u);
@@ -1413,7 +1459,7 @@ function update(dt) {
   let ct = (captions.find(([a0, a1]) => A >= a0 && A < a1) || captions[captions.length - 1])[2];
   if (sleepyP > 0.5 && showK && A > 60) ct = '合上的时候，小猫打了个哈欠，睡着了 · Zzz';
   if (A > 70 && S.shy > 0.5) ct = '慢慢开 · 小猫害羞地探出半个脑袋…';
-  if (A > 70 && !S.act.nap && !S.act.chase && S.shy < 0.5 && cabinE > 0.9) ct = ct + `  ·  ${SEASONS[S.season].blurb}`;
+  if (A > 70 && !S.act.nap && !S.act.chase && S.shy < 0.5 && cabinE > 0.9) ct = ct + `  ·  ${SEASONS[SEASON.t < 0.5 ? SEASON.from : SEASON.to].blurb}`;
   if (S.tod && !(T < S.capUntil)) ct = `${S.tod} · ${ct}`;
   if (T < S.capUntil) ct = S.cap;
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
@@ -1553,6 +1599,7 @@ window.__popup = {
       sunU: +S.dayU.toFixed(3), sunVisible: paperSun.visible, sunPos: paperSun.position.toArray().map((x) => +x.toFixed(2)), light: sun.position.toArray().map((x) => +x.toFixed(2)), sunI: +sun.intensity.toFixed(2), tod: S.tod, sky: '#' + skyMat.color.getHexString(), horizon: +horizonMat.opacity.toFixed(2),
       run: { ...S.run, t0: undefined, dur: +S.run.dur.toFixed(2) }, conP: +S.conP.toFixed(2), conVisible: catStars.visible, watchW: +S.watchW.toFixed(2), noonW: +S.noonW.toFixed(2), sneezes: S.sneezes, sneeze: +(S.sneeze || 0).toFixed(2), lookX: +S.lookX.toFixed(2), lookY: +S.lookY.toFixed(2), caption: S.cap,
       dawnStretch: +S.dawnW.toFixed(2), dawnPose: +(S.dawnStretch || 0).toFixed(2), dawnHeld: !!S.dawnHeld, dawnSaid: !!S.dawnSaid, period: S.tod,
+      seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3), seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
       kittenPos: kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover, events: sound.events.slice(-14),
       trees: trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
     };

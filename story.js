@@ -48,4 +48,6 @@ export const TUNING = {
   sneezeEvery: 6.5,   // 正午小猫打喷嚏的间隔（秒）
   // v5「清晨窗边伸懒腰」：在 dawnLo–dawnHi 停住 dawnHold 秒出字幕（不是秘密）
   dawnLo: 36, dawnHi: 58, dawnHold: 2.2,
+  // v6「开着时换季」：合上推进季节后，下次打开在 seasonMorphLo–Hi 之间用开盖进度驱动 SEASON.t
+  seasonMorphLo: 22, seasonMorphHi: 65,
 };

@@ -35,19 +35,4 @@ export const SEASONS = [
     ] },
 ];
 
-// 手感阈值（单位：度 / 秒，针对平滑后的角速度）
-export const TUNING = {
-  shyBelow: 16,       // 慢于此：小猫害羞探头
-  fastAbove: 85,      // 快于此：纸张哗啦 + 猫头鹰受惊
-  slamAbove: 120,     // 合盖快于此：啪！
-  gentleBelow: 45,    // 合盖过程中最大角速度低于此：算"轻轻合上"
-  holdSeconds: 3,     // 停住多久触发隐藏剧情
-  holdTol: 2.2,       // 判定"停住"的角度容差（度）
-  // v4「一整天」：从 dayStart 以下开始，不回头（回退不超过 dayBackTol 度）、不猛开，一路开到 dayEnd，用时 ≥ daySeconds
-  dayStart: 30, dayEnd: 122, dayBackTol: 5, daySeconds: 9,
-  sneezeEvery: 6.5,   // 正午小猫打喷嚏的间隔（秒）
-  // v5「清晨窗边伸懒腰」：在 dawnLo–dawnHi 停住 dawnHold 秒出字幕（不是秘密）
-  dawnLo: 36, dawnHi: 58, dawnHold: 2.2,
-  // v6「开着时换季」：合上推进季节后，下次打开在 seasonMorphLo–Hi 之间用开盖进度驱动 SEASON.t
-  seasonMorphLo: 22, seasonMorphHi: 65,
-};
+export { TUNING } from './tuning.js';

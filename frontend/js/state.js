@@ -6,6 +6,7 @@ export const PW = 10;
 export const PH = 6.2;
 export const FONT = '"PingFang SC","Hiragino Sans GB","Songti SC","Microsoft YaHei","Noto Serif CJK SC","Noto Sans CJK SC",sans-serif';
 
+/** @type {Array<[number, number, string]>} */
 export const CAPTIONS = [
   [0, 15, '合上的书 · 一道暖光从缝里漏出来'],
   [15, 40, '地面折起 · 纸松树一排排立起来'],

@@ -3,9 +3,9 @@
 合上笔记本盖子 = 合上这本书；慢慢打开屏幕，一本纸艺立体书就在屏幕里展开：松林、小木屋、亮灯的窗、一只橘猫，最后是月亮、星星和萤火虫。
 网页只关心一个输入：**合页角度 `angle`（0–130°）**。没有传感器时用滑块也能完整体验。
 
-克隆之后在仓库根目录执行 `./start.sh`（说明见第三节，`./start.sh --help`）。卡顿和假死的原因写在 `PERFORMANCE.md`。
+克隆之后在仓库根目录执行 `./start.sh`（说明见第三节，`./start.sh --help`）。卡顿和假死的原因写在 `PERFORMANCE.md`。角度流的字段写在 `docs/PROTOCOL.md`。
 
-**v2（本版）把它从"一本会开合的书"变成了"一本会回应你的书"**：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。
+**现在是 v7。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v7 不改画面，改的是契约和检查：手感数字在 `frontend/js/tuning.js`，角度帧带版本号，`./start.sh test` 跑 lint、类型检查和测试。
 
 ## 一、文件
 
@@ -15,18 +15,24 @@
 |---|---|
 | `frontend/` | 静态页。`index.html`、`styles.css`、`js/`（ES modules，不用打包） |
 | `frontend/vendor/three.module.js` | Three.js r160，随仓库走，**离线可用** |
-| `frontend/js/story.js` | 数据：小秘密的名字/提示、四季设定与晚安台词、手感阈值（`TUNING`） |
+| `frontend/js/story.js` | 数据：小秘密的名字/提示、四季设定与晚安台词 |
+| `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
+| `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
+| `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
-| `frontend/js/store.js` | `localStorage` 存档：开合次数、已发现的秘密、静音、摸猫次数 |
+| `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
 | `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
-| `backend/bridge.py` | 读角度，WebSocket 广播 `{"angle": 87.3}`。`--fake` 是假数据 |
+| `backend/bridge.py` | 读角度，按协议 v1 广播。`--fake` 是假数据 |
+| `backend/protocol.py` | 角度帧、心跳、`/health` 的字段 |
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
-| `start.sh` | 一条命令拉起静态页和桥。`./start.sh --help` |
+| `start.sh` | 一条命令拉起静态页和桥。`./start.sh test` 跑检查 |
+| `docs/PROTOCOL.md` | 前后端角度流契约 |
 | `docker/` | 静态页和假桥的镜像。真实合页不进容器 |
 | `PERFORMANCE.md` | 假死和掉帧的原因，以及改了什么 |
-| `tests/` | Playwright：`test_v2.py`～`test_v6.py`、`smoke.py`、`q.py` |
+| `tests/unit/` | 协议、玩法判定、存档、桥的健康检查 |
+| `tests/e2e/smoke.py` | 一条无头浏览器冒烟：假桥、换季、清晨、秘密、一整天 |
 | `shots/` | 截图（gitignore，跑测试时生成） |
 | `CHANGELOG.md` | 版本记录 |
 
@@ -68,19 +74,19 @@
 - 小猫开始"过日子"了：正午太阳太晃眼，它会眯着眼探头，隔一会儿打个小喷嚏；黄昏它会转过头去看太阳落山；夜里抬头看月亮。（你在晃鼠标的时候，它还是先看你。）
 - 小秘密手账多了第 8 条，提示是：「从天亮到天黑，慢慢来。别回头，也别着急。」找到之后，书里会永久多出一样东西，以后每个夜晚都能看到。
 - 为了给"看日落"留出时间，"追萤火虫"那个停住彩蛋改成了更晚一点、天真正黑下来之后才触发。
-- 手感参数在 `frontend/js/story.js` 的 `TUNING` 里（`daySeconds`、`dayBackTol`、`sneezeEvery` 等），真机上觉得太难或太容易可以直接改。
+- 手感参数在 `frontend/js/tuning.js` 的 `TUNING` 里（`daySeconds`、`dayBackTol`、`sneezeEvery` 等），真机上觉得太难或太容易可以直接改。
 
 ## 二·八、v5 新玩法：清晨窗后伸懒腰（不剧透版）
 
 - 天亮最早的那一段，小猫还没出门——它在**亮着的窗户后面**伸懒腰：前爪抬起来、背弓一下、眯着眼打个哈欠。盖子开到门口探头之后，它才换成你熟悉的门边/窗台动作。
 - 在清晨那一段角度停住不动大约两秒，会看到一句「清晨 · 窗边伸了个懒腰」（每打开一次只说一遍）。这不是新的小秘密，手账还是 8 条。
-- 正午打喷嚏、黄昏看日落、夜里看月亮都还在；参数在 `frontend/js/story.js` 的 `TUNING`（`dawnLo` / `dawnHi` / `dawnHold`）。
+- 正午打喷嚏、黄昏看日落、夜里看月亮都还在；参数在 `frontend/js/tuning.js` 的 `TUNING`（`dawnLo` / `dawnHi` / `dawnHold`）。
 
 ## 二·九、v6 新玩法：开着时换季（不剧透版）
 
 - 完整地开合一次之后，季节还是会往前走——但**下次慢慢打开**时，你会看见树色、天空、窗台上的小道具和小猫的行头一起变过去（春的花瓣换成夏的西瓜，再往后是落叶、初雪）。
 - 开得越慢，过渡看得越清楚；一下子开过那一段，也会一次变完。变的时候屏幕下方会说一句「春 → 夏 · 换季了」（每换一次说一遍）。这不是新的小秘密，手账还是 8 条。
-- 清晨窗后伸懒腰、正午打喷嚏、黄昏看日落、夜里看月亮都还在。参数在 `frontend/js/story.js` 的 `TUNING`（`seasonMorphLo` / `seasonMorphHi`）。
+- 清晨窗后伸懒腰、正午打喷嚏、黄昏看日落、夜里看月亮都还在。参数在 `frontend/js/tuning.js` 的 `TUNING`（`seasonMorphLo` / `seasonMorphHi`）。
 
 ## 三、运行
 
@@ -105,6 +111,7 @@
 ./start.sh --restart                # 停掉本脚本上次的进程/容器再启动
 ./start.sh --port 8123 --ws-port 8765
 ./start.sh --sensor --smooth 0.5 --offset -3
+./start.sh test --yes              # ESLint、tsc、单元测试、无头冒烟
 ```
 
 缺依赖会先问 `[y/n]`：`backend/.venv` 和 pip、macOS 上的 `brew install hidapi`、第一次构建镜像时拉取 `python:3.12-alpine`。`--yes` 才跳过询问。
@@ -117,7 +124,7 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 
-桥断开大约 1.5 秒后网页退回滑块；桥回来会自己重连，断线时大约每 2 秒一次，不会越连越多。
+桥连上且角度在 1.5 秒内到达时，左下圆点是绿的，滑块禁用。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次，不会越连越多。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`。
 
 ### 仍想手动启动
 
@@ -126,6 +133,7 @@ python3 -m http.server 8000 --directory frontend
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 backend/.venv/bin/python backend/bridge.py --fake
+curl -s http://127.0.0.1:8766/health
 ```
 
 真实传感器改用 `backend/requirements-sensor.txt`，macOS 上先 `brew install hidapi`，然后去掉 `--fake`。
@@ -139,7 +147,8 @@ backend/.venv/bin/python backend/bridge.py --fake
 | `--offset` | 0 | 角度偏移（校准用，度） |
 | `--smooth` | 0 | 低通平滑 0–0.95，数值越大越稳越慢 |
 | `--clamp` | 180 | 角度上限（网页自己会再限制到 130） |
-| `--host` / `--port` | localhost / 8765 | 监听地址 |
+| `--host` / `--port` | localhost / 8765 | WebSocket 监听地址 |
+| `--http-port` | 8766 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
 
 ## 四、排查问题
 
@@ -169,7 +178,7 @@ backend/.venv/bin/python backend/bridge.py --fake
 ## 五、传感器读不了怎么办
 
 1. **滑块模式**本身就是完整体验（上面的"先只用滑块看看"）。
-2. 用 `?ws=` 接别的输入：任何程序只要在 WebSocket 上广播 `{"angle": 0~130}` 就行，例如用触控板两指滑动、MIDI 旋钮、手机陀螺仪等做一个自己的小桥。
+2. 用 `?ws=` 接别的输入：按 `docs/PROTOCOL.md` 发 v1 帧，或仍只发 `{"angle": 0~130}`。触控板、MIDI 旋钮、手机陀螺仪都可以做一个自己的小桥。
 3. 先用开源的 LidAngleSensor（Swift 原生小工具）确认你的机器在这个系统版本上确实读得到角度，再回来查 `backend/bridge.py`。
 4. 看 pybooklid 的 issue / README：<https://github.com/tcsenpai/pybooklid>。
 
@@ -179,27 +188,21 @@ backend/.venv/bin/python backend/bridge.py --fake
 - **`backend/bridge.py` 读真实传感器的那部分没有在真实 Mac 上测试过**。pybooklid 的 API（`LidSensor()` / `read_angle()` / `disconnect()`）是读了 1.0.0 版源码确认的，但不保证在你的机器上一次跑通；原始值范围、是否需要 sudo 都要你实测。
 - 灯光、相机是在软件渲染下调的，真 GPU 上（M1 Max）亮度可能略有差异，可以调 `frontend/js/gfx.js` 里的灯光强度。
 
-- v2 新增部分同样只在无头 Chrome 里验证过：`tests/test_v2.py` 43 项断言（树的立起时间、速度/停留/晃动/合盖各分支、四季、鼠标、存档、静音、WebSocket、音频离线渲染非静音）。**真实声音输出没有人耳听过**：只能证明合成出来的波形不是静音，音色好不好听、音量合不合适要你在 Mac 上自己听，`frontend/js/audio.js` 顶部的参数可调。
-- 手感阈值（慢<16°/s、猛>85°/s、晃动判定、合盖快慢）是按"滑块模拟"和对真实开盖速度的估计定的，**没有用真传感器数据校过**，觉得太灵敏/太迟钝就改 `frontend/js/story.js` 里的 `TUNING`。
-- v3 日晷只在无头 Chrome 里验证过：`tests/test_v3.py` 18 项断言（太阳出现/消失的角度、从右到左单调移动、约 74° 到最高点、光源方向翻转、黄昏光更低更暖、霞光、时段字幕、过冲、四季）。**影子扫过的观感和霞光颜色是在软件渲染下调的**，真 GPU 上阴影可能更锐利、颜色略有差异，可调 `frontend/js/sky-data.js` 里的 `SUN_ARC`、`DAWN_GLOW`、`DUSK_GLOW`。
-- v5 清晨窗后伸懒腰只在无头 Chrome 里验证过：`tests/test_v5.py` 20 项断言（约 45° 窗后可见、停住出字幕、正午/黄昏回归、dbg 字段）。**真实合页上停 2 秒的手感和真 GPU 下窗内橘猫的观感都没测。**
+- v2–v6 的画面（树的立起、速度/停留/晃动/合盖、四季与换季、日晷、小猫的一天、清晨伸懒腰）当时是在无头 Chrome 里对过的。那些按版本堆的脚本已经换成 `tests/unit/` 和一条冒烟，见第七节。**真实声音输出没有人耳听过**：只能证明合成出来的波形不是静音，音色好不好听、音量合不合适要你在 Mac 上自己听，`frontend/js/audio.js` 顶部的参数可调。
+- 手感阈值（慢<16°/s、猛>85°/s、晃动判定、合盖快慢）是按"滑块模拟"和对真实开盖速度的估计定的，**没有用真传感器数据校过**，觉得太灵敏/太迟钝就改 `frontend/js/tuning.js` 里的 `TUNING`。
+- **影子扫过的观感和霞光颜色是在软件渲染下调的**，真 GPU 上阴影可能更锐利、颜色略有差异，可调 `frontend/js/sky-data.js` 里的 `SUN_ARC`、`DAWN_GLOW`、`DUSK_GLOW`。**真实合页上停 2 秒的手感和真 GPU 下窗内橘猫的观感都没测。**
 - 动画时间和 60fps 表现没在真 GPU 上测过；程序内置了一个自适应像素比，持续掉帧会自己降分辨率。
+- v7 的检查在 Linux 无头 Chrome 上跑过：`./start.sh test`（ESLint、`tsc --checkJs`、16 个 node 测试、4 个 Python 测试、一条 15 项冒烟）。冒烟覆盖假桥带动角度、换季、清晨伸懒腰、缝里的眼睛、直角爱心、一整天、轻轻合上、断线回滑块、重连次数有上界。**Docker 镜像和真实 Mac 合页没有在这台机器上跑。**
 
-## 七、重新生成截图（可选，需要 Playwright）
+## 七、测试
 
 ```bash
-pip install playwright pillow websockets
-# 静态页先在 8123 端口跑起来（目录必须是 frontend/）：
-./start.sh --slider --port 8123 --no-docker
-python3 tests/smoke.py                      # 假桥、换季、伸懒腰、甩角度、重连次数
-python3 tests/shot.py "0,30,60,90,120"      # 截图写到 shots/
-python3 tests/test_v2.py                    # v2 全量自检，截图写到 shots/v2/
-python3 tests/test_v3.py                    # v3 日晷自检
-python3 tests/test_v4.py                    # v4 小猫的一天 + 一整天
-python3 tests/test_v5.py                    # v5 清晨窗后伸懒腰
-python3 tests/test_v6.py                    # v6 开着时换季
+./start.sh test --yes
 ```
-（脚本里用的是系统 Chrome：`/usr/bin/google-chrome`，在 Mac 上请把路径改成你的 Chrome，或用 `playwright install chromium` 后去掉 `executable_path`。）
+
+会装好检查用的 npm 包和 `tests/requirements.txt`（Playwright、Pillow），然后依次跑 ESLint、`tsc -p tsconfig.json --noEmit`、`node --test tests/unit/*.test.js`、`PYTHONPATH=backend python -m unittest`、以及 `tests/e2e/smoke.py`。有本机 Chrome 就用它（SwiftShader）；没有就装 Playwright 自带的 Chromium。
+
+冒烟自己拉起假桥（默认 WebSocket 18665、健康检查 18666），静态页用 8133。截图失败不会让整次冒烟失败：软件渲染下 `ReadPixels` 可能超时。
 
 ---
 

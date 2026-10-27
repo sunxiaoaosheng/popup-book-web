@@ -1,6 +1,7 @@
 // 开合手感、摇晃/猛开、停住彩蛋、一整天。不碰网格。
 import { clamp, smooth, sstep } from './math.js';
-import { TUNING } from './story.js';
+import { TUNING } from './tuning.js';
+import { holdBand, holdDuration, heartTarget, isStartleOpen, noteShake, stepFullday } from './rules.js';
 
 export function stepMotion(W, dt) {
   const { S, frame: F } = W;
@@ -22,33 +23,18 @@ export function stepMotion(W, dt) {
   if (S.yawnT < 99) S.yawnT += dt;
   const sp = S.sp;
 
-  {
-    const w = S.sw;
-    const d = S.filtered - (S._pf ?? S.filtered);
-    S._pf = S.filtered;
-    if (Math.abs(d) > 0.02) {
-      const dn = d > 0 ? 1 : -1;
-      if (dn !== w.dir) {
-        if (w.dir !== 0 && Math.abs(w.ext - (S.filtered - d)) > 1.6) w.swings.push(T);
-        w.ext = S.filtered - d;
-        w.dir = dn;
-      }
-    }
-    while (w.swings.length && T - w.swings[0] > 1.6) w.swings.shift();
-    if (w.swings.length >= 4 && T - S.lastShake > 2.6 && A > 22) {
-      S.lastShake = T;
-      w.swings.length = 0;
-      S.shakeN++;
-      W.shakeBurst();
-      W.sound.shake(S.season);
-      W.say(['哗啦——花瓣全抖落下来了', '哗啦——叶子和柳絮漫天都是', '哗啦——一场叶子雨', '哗啦——树上的雪全抖下来了'][S.season], 3.2);
-      W.discover('shake');
-    }
+  if (noteShake(S.sw, S.filtered, T, S.lastShake)) {
+    S.lastShake = T;
+    S.shakeN++;
+    W.shakeBurst();
+    W.sound.shake(S.season);
+    W.say(['哗啦——花瓣全抖落下来了', '哗啦——叶子和柳絮漫天都是', '哗啦——一场叶子雨', '哗啦——树上的雪全抖下来了'][S.season], 3.2);
+    W.discover('shake');
   }
   S.burstT = Math.max(0, S.burstT - dt);
 
   S.flutCool -= dt;
-  if (S.lastDir > 0 && sp > TUNING.fastAbove && A > 14 && A < 126 && S.flutCool <= 0) {
+  if (S.lastDir > 0 && isStartleOpen(sp, A) && S.flutCool <= 0) {
     S.flutCool = 3;
     S.flutT = 1.3;
     S.startled = 1;
@@ -78,7 +64,7 @@ export function stepMotion(W, dt) {
   S.duck = smooth(S.duck, (S.shy > 0.4 && sp > 40) ? 1 : 0, dt, 0.25);
   F.peekP = S.peek.step(sstep(76, 90, A) * (1 - 0.55 * S.duck), dt);
   F.hopP = S.hop.step(sstep(91 + 10 * S.shy, 100 + 12 * S.shy, A), dt);
-  F.eggP = S.egg.step(1 - sstep(3, 6.5, Math.abs(A - 90)), dt);
+  F.eggP = S.egg.step(heartTarget(A), dt);
   if (F.eggP > 0.9 && S.lastDir !== 0) S.eggT += dt;
   else S.eggT = 0;
   if (S.eggT > 0.5) W.discover('heart');
@@ -93,12 +79,8 @@ export function stepMotion(W, dt) {
       H.t = 0;
       H.fired = false;
     } else H.t += dt;
-    const dawnBand = H.anchor >= TUNING.dawnLo && H.anchor <= TUNING.dawnHi && F.cabinP > 0.55 && F.peekP < 0.12;
-    H.band = (H.anchor > 4 && H.anchor < 16) ? 'seam'
-      : dawnBand ? 'dawn'
-        : (H.anchor > 52 && H.anchor < 72 && F.cabinP > 0.9) ? 'nap'
-          : (H.anchor > 109 && H.anchor < 124) ? 'chase' : '';
-    const holdNeed = H.band === 'dawn' ? TUNING.dawnHold : TUNING.holdSeconds;
+    H.band = holdBand(H.anchor, F.cabinP, F.peekP);
+    const holdNeed = holdDuration(H.band);
     const ring = H.band && !H.fired && H.t > 0.7 ? clamp((H.t - 0.7) / Math.max(0.4, holdNeed - 0.7), 0, 1) : -1;
     W.ui.setRing(ring);
     if (H.band && !H.fired && H.t >= holdNeed) {
@@ -126,24 +108,14 @@ export function stepMotion(W, dt) {
   }
 
   {
-    const R = S.run;
-    if (A < TUNING.dayStart) {
-      R.on = true; R.t0 = T; R.max = A; R.bad = ''; R.done = false;
+    const ev = stepFullday(S.run, A, S.sp, T);
+    if (ev === 'arm') {
       S.sunsetSaid = false; S.sneezeSaid = false; S.dawnSaid = false; S.dawnHeld = false;
-    } else if (R.on && !R.done) {
-      if (A > R.max) R.max = A;
-      if (A < R.max - TUNING.dayBackTol) R.bad = 'back';
-      if (S.sp > TUNING.fastAbove) R.bad = 'fast';
-      if (A >= TUNING.dayEnd) {
-        R.done = true;
-        R.dur = T - R.t0;
-        if (!R.bad && R.dur >= TUNING.daySeconds) {
-          const first = W.discover('fullday');
-          S.conBurst = 1;
-          W.say(first ? '你陪小猫慢慢过完了一整天——天上多了一只猫' : '又是完整的一天 · 猫座在等你', 5);
-        } else if (!R.bad && R.dur >= TUNING.daySeconds * 0.45) W.say('这一天…过得有点快', 2.6);
-      }
-    }
+    } else if (ev === 'discover') {
+      const first = W.discover('fullday');
+      S.conBurst = 1;
+      W.say(first ? '你陪小猫慢慢过完了一整天——天上多了一只猫' : '又是完整的一天 · 猫座在等你', 5);
+    } else if (ev === 'fast') W.say('这一天…过得有点快', 2.6);
     if (S.conBurst > 0) S.conBurst = Math.max(0, S.conBurst - dt / 6);
     if (S.napLock > 0) S.napLock -= dt;
   }

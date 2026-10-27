@@ -1,7 +1,8 @@
 // 猫头鹰、天体、粒子、合盖结局、相机、声音和字幕。
 import { clamp, lerp, sstep } from './math.js';
 import { CAPTIONS } from './state.js';
-import { SEASONS, SECRETS, TUNING } from './story.js';
+import { SEASONS, SECRETS } from './story.js';
+import { closeKind } from './rules.js';
 import { groundY } from './build-critters.js';
 
 const caption = document.getElementById('caption');
@@ -163,8 +164,9 @@ export function stepAmbient(W, dt) {
   if (S.armed && A < 5 && S.closing) {
     S.armed = false;
     S.closing = false;
-    const slam = S.closeMax > TUNING.slamAbove;
-    const gentle = S.closeMax < TUNING.gentleBelow;
+    const kind = closeKind(S.closeMax);
+    const slam = kind === 'slam';
+    const gentle = kind === 'gentle';
     const n = W.store.addCycle();
     W.setSeason(n);
     W.store.markSeason(S.season);

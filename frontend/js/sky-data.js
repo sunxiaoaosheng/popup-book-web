@@ -7,6 +7,7 @@ export const sunAt = (u, out) => out.set(
   SUN_ARC.cy + SUN_ARC.ry * Math.sin(Math.PI * u),
   0,
 );
+/** @type {Array<[number, string]>} */
 export const TIMES = [[0, '清晨'], [0.2, '上午'], [0.4, '正午'], [0.6, '午后'], [0.8, '黄昏']];
 export const DAWN_SKY = new THREE.Color('#f3c7d6');
 export const DAWN_GLOW = new THREE.Color('#ff9fb8');

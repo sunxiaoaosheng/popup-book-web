@@ -35,7 +35,7 @@ export function createWorld(stageEl) {
       c2: new THREE.Color(),
       c3: new THREE.Color(),
     },
-    net: { connects: 0, coalesced: 0 },
+    net: { connects: 0, coalesced: 0, dropped: 0, link: 'down' },
   };
   buildGround(W);
   buildSky(W);

@@ -18,6 +18,7 @@
   #src{display:flex;align-items:center;gap:6px;margin-top:6px;opacity:.9;justify-content:space-between;flex-wrap:wrap}
   #dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8a7f74;margin-right:6px}
   #dot.on{background:#6be28a;box-shadow:0 0 8px #6be28a}
+  #dot.stale{background:#e2b84a;box-shadow:0 0 8px #e2b84a}
   button{background:#f2a24a;color:#2a1a0e;border:0;border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer}
   button.ghost{background:transparent;color:#f6ead2;border:1px solid rgba(255,255,255,.3)}
   #hint{position:fixed;right:12px;top:12px;font-size:12px;opacity:.55}

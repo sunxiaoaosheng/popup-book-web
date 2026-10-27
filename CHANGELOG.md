@@ -1,5 +1,24 @@
 # 更新记录
 
+## v7 —— 地基（2026-10-27）
+
+### 新增
+- **角度流协议 v1**（`docs/PROTOCOL.md`）：`v`、单调时间 `t`、序号 `seq`、`type`（`angle` / `heartbeat`）。未知字段忽略；只有角度、没有版本号的旧帧 `{"angle": n}` 仍接受。心跳约每秒一帧，不刷新「最后一次角度」的年龄。
+- **HTTP `/health`**：桥模式、客户端数、最后角度及其年龄、当前序号、广播频率。默认端口是 WebSocket 端口 + 1（8766）。`./start.sh` 会等它返回 `"ok": true`。
+- 网页按连接状态显示：已连接（绿点，滑块禁用）、等待角度、角度过期（黄点，可改用滑块）、断开（灰点，模拟模式）。过期阈值 1.5 秒，见 `frontend/js/protocol.js`。
+- 手感阈值集中到 `frontend/js/tuning.js`，并写了每项在判什么。`story.js` 仍转出 `TUNING`，旧的引用不用改。
+- 玩法判定（换季进度、时段名、停住带、一整天、合盖快慢、晃动）抽到 `frontend/js/rules.js`，场景模块调用它们，单元测试测的是同一份代码。
+- 测试按模块放：`tests/unit/`（node:test 与 Python unittest）和一条 `tests/e2e/smoke.py`。入口是 `./start.sh test`。
+- ESLint、`tsc --checkJs`（不打包）、GitHub Actions（推送和 PR 上跑 lint + 测试）。
+
+### 变更
+- 删掉按版本堆起来的 `tests/test_v2.py` … `test_v6.py`、`tests/smoke.py`、`tests/shot.py`、`tests/q.py`。8 个秘密、换季、清晨伸懒腰、一整天仍由单元测试和那条冒烟覆盖。
+- 版本号记为 **v7**（本文件、README、标签 `v7`）。画面和秘密清单没有新的一条。
+
+### 已知不足
+- 这条冒烟不逐条点过「午觉 / 猫头鹰 / 晃动 / 追萤火虫」的画面，这四条的判定在 `rules.js` 的单元测试里。
+- Docker 镜像和真实 Mac 合页这次没有跑。协议字段在 Linux 假桥上对过。
+
 ## v6 —— 开着时换季（2026-10-26）
 
 ### 新增

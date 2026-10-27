@@ -1,6 +1,7 @@
 // 小猫的一天：清晨伸懒腰、窗台、正午喷嚏、黄昏看日落、追萤火虫、抚摸。
 import { clamp, lerp, sstep, smooth } from './math.js';
-import { TUNING } from './story.js';
+import { TUNING } from './tuning.js';
+import { wantsDawnStretch } from './rules.js';
 
 export function stepKitten(W, dt) {
   const { S, frame: F, K, kitten } = W;
@@ -21,7 +22,7 @@ export function stepKitten(W, dt) {
   const chE = S.chaseP * S.chaseP * (3 - 2 * S.chaseP);
   const baseVis = peekP > 0.003 && cabinE > 0.5 && S.napP < 0.004;
   const napVis = S.napP > 0.004 && cabinE > 0.8;
-  const dawnWant = cabinE > 0.55 && A >= TUNING.dawnLo && A <= TUNING.dawnHi && peekP < 0.1 && hopP < 0.05 && !napVis;
+  const dawnWant = wantsDawnStretch(A, cabinE, peekP, hopP, napVis);
   S.dawnW = smooth(S.dawnW, dawnWant ? 1 : 0, dt, dawnWant ? 0.45 : 0.35);
   const dawnVis = S.dawnW > 0.04;
   const showK = baseVis || napVis || dawnVis;

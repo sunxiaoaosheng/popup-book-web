@@ -1,11 +1,12 @@
 // 滑块、键盘、鼠标，以及合页 WebSocket。角度在每帧只解析一次。
 import * as THREE from '../vendor/three.module.js';
 import { MAX_ANGLE } from './state.js';
+import { parseAngleMessage, createSeqGate, linkState } from './protocol.js';
 
 export function createInput(W) {
   const { S } = W;
   const params = new URLSearchParams(location.search);
-  const slider = document.getElementById('slider');
+  const slider = /** @type {HTMLInputElement} */ (document.getElementById('slider'));
   const angleEl = document.getElementById('angle');
   const dot = document.getElementById('dot');
   const srcText = document.getElementById('srcText');
@@ -13,9 +14,10 @@ export function createInput(W) {
   const WS_URL = params.get('ws') || 'ws://localhost:8765';
   if (params.get('hud') === '0') document.body.classList.add('nohud');
 
-  let wsActive = false;
-  let lastWsMsg = 0;
+  let link = 'down';
+  let lastAngleAt = 0;
   let ws = null;
+  const gate = createSeqGate();
   let autoPlay = false;
   let autoT = 0;
   let latest = null;
@@ -49,6 +51,7 @@ export function createInput(W) {
     }
     W.net.connects += 1;
     ws = sock;
+    sock.onopen = () => gate.reset();
     sock.onmessage = (ev) => {
       if (latest !== null && seq !== seen) W.net.coalesced += 1;
       latest = ev.data;
@@ -62,23 +65,30 @@ export function createInput(W) {
     };
   }
 
+  function noteLink() {
+    link = linkState(!!(ws && ws.readyState === 1), lastAngleAt, performance.now());
+    W.net.link = link;
+  }
+
   function drain() {
     if (seq === seen || latest == null) return;
     const s = seq;
     const raw = latest;
     seen = s;
     try {
-      const d = JSON.parse(raw);
-      if (typeof d.angle === 'number' && Number.isFinite(d.angle)) {
-        lastWsMsg = performance.now();
-        wsActive = true;
-        setAngle(d.angle);
+      const frame = parseAngleMessage(raw);
+      if (!frame || !gate.accept(frame)) {
+        if (frame) W.net.dropped += 1;
+      } else if (frame.type === 'angle') {
+        lastAngleAt = performance.now();
+        setAngle(/** @type {number} */ (frame.angle));
       }
     } catch { /* 忽略坏帧 */ }
+    noteLink();
   }
 
   slider.addEventListener('input', () => {
-    if (wsActive) return;
+    if (link === 'live') return;
     autoPlay = false;
     autoBtn.textContent = '▶ 自动演示';
     setAngle(slider.value);
@@ -99,22 +109,31 @@ export function createInput(W) {
 
   function tick(dt) {
     drain();
-    if (autoPlay && !wsActive) {
+    noteLink();
+    if (autoPlay && link !== 'live') {
       autoT += dt * 0.28;
       setAngle(MAX_ANGLE * (0.5 + 0.5 * Math.sin(autoT)));
     }
   }
 
   function refreshHud() {
-    if (wsActive && performance.now() - lastWsMsg > 1500) wsActive = false;
-    if (slider.disabled !== wsActive) slider.disabled = wsActive;
-    if (dotOn !== wsActive) {
-      dot.classList.toggle('on', wsActive);
-      dotOn = wsActive;
+    noteLink();
+    const live = link === 'live';
+    if (slider.disabled !== live) slider.disabled = live;
+    const wantOn = live;
+    const wantStale = link === 'stale';
+    if (dotOn !== wantOn || dot.classList.contains('stale') !== wantStale) {
+      dot.classList.toggle('on', wantOn);
+      dot.classList.toggle('stale', wantStale);
+      dotOn = wantOn;
     }
-    const text = wsActive
+    const text = live
       ? `传感器已连接（${WS_URL}）· 滑块已禁用`
-      : (ws && ws.readyState === 1 ? '已连上 WebSocket，等待数据…' : '模拟模式（拖动滑块）· 正在尝试连接 ' + WS_URL);
+      : link === 'stale'
+        ? `角度过期（${WS_URL}）· 可改用滑块`
+        : link === 'wait'
+          ? `已连上，等待角度…（${WS_URL}）`
+          : '模拟模式（拖动滑块）· 正在尝试连接 ' + WS_URL;
     if (text !== srcCache) { srcText.textContent = text; srcCache = text; }
     if (Math.abs(+slider.value - S.target) > 0.05) slider.value = S.target;
     const label = S.target.toFixed(1) + '°';
@@ -130,7 +149,8 @@ export function createInput(W) {
 
   return {
     tick, maybeHud, refreshHud, setAngle, WS_URL,
-    get wsActive() { return wsActive; },
+    get wsActive() { return link === 'live'; },
+    get link() { return link; },
     get ws() { return ws; },
   };
 }

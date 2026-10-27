@@ -1,4 +1,4 @@
-// 自动化测试用的 window.__popup。字段和 v6 保持一致。
+// 自动化测试用的 window.__popup。字段在 v6 的基础上多了 net.dropped 和 net.link。
 import { Sound } from './audio.js';
 import { lerp } from './math.js';
 import { step } from './sim.js';
@@ -51,7 +51,7 @@ export function attachDebug(W, input) {
     return res;
   }
 
-  window.__popup = {
+  /** @type {any} */ (window).__popup = {
     setAngle: input.setAngle,
     S,
     store: W.store,
@@ -117,7 +117,7 @@ export function attachDebug(W, input) {
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
         events: W.sound.events.slice(-14),
         trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
-        net: { connects: W.net.connects, coalesced: W.net.coalesced },
+        net: { connects: W.net.connects, coalesced: W.net.coalesced, dropped: W.net.dropped, link: W.net.link },
       };
     },
   };

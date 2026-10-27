@@ -136,7 +136,9 @@ export function buildSky(W) {
   for (const h of hillDefs) backFace.add(cut(polyShape(hillShape(h.base, h.amp, h.f, h.ph)), h.col, h.z, 0.05));
 
   const mapY = (h, x) => h.base + h.amp * Math.sin(h.f * x + h.ph) + h.amp * 0.4 * Math.sin(2.3 * h.f * x + h.ph * 2);
-  for (const [hi, step, dark, light] of [[1, 0.55, '#2f6a55', '#3b7b63'], [2, 0.7, '#245a49', '#2e6b57']]) {
+  /** @type {Array<[number, number, string, string]>} */
+  const pineBands = [[1, 0.55, '#2f6a55', '#3b7b63'], [2, 0.7, '#245a49', '#2e6b57']];
+  for (const [hi, step, dark, light] of pineBands) {
     const h = hillDefs[hi];
     for (let x = -4.6; x < 4.7; x += step * (0.8 + rnd() * 0.5)) {
       const sz = 0.55 + rnd() * 0.45;

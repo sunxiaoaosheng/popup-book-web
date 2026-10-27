@@ -22,7 +22,7 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
       <ul>${SECRETS.map((s) => store.hasSecret(s.id)
         ? `<li class="got"><b>${s.name}</b><br><span>${s.found}</span></li>`
         : `<li><b>？？？</b><br><span>${s.hint}</span></li>`).join('')}</ul>
-      <div class="foot">四季 ${seen}　·　已翻开合上 ${store.cycles} 次
+      <div class="foot">四季 ${seen}\u3000·\u3000已翻开合上 ${store.cycles} 次
         <button id="jreset" class="ghost">清空记录</button></div>`;
     const r = panel.querySelector('#jreset');
     r.addEventListener('click', () => { if (r.dataset.sure) { store.reset(); location.reload(); } else { r.dataset.sure = '1'; r.textContent = '再点一次确认'; } });
@@ -55,7 +55,7 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
   return {
     found(id) {
       const s = SECRETS.find((x) => x.id === id); paintJ(); if (!panel.hidden) render();
-      showToast(`✨ 发现小秘密 <b>${store.foundCount()}/${SECRETS.length}</b>　${s.name}<br><small>${s.found}</small>`);
+      showToast(`✨ 发现小秘密 <b>${store.foundCount()}/${SECRETS.length}</b>\u3000${s.name}<br><small>${s.found}</small>`);
     },
     toast: showToast,
     setRing(p) {
@@ -66,7 +66,7 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
     },
     showEnding(o) {
       if (!o) { this.hideEnding(); return; }
-      ending.innerHTML = `<div class="box"><div class="t">${o.title}</div><div class="l">${o.line}</div><div class="n">第 ${o.cycles} 次合上　·　${o.next}</div></div>`;
+      ending.innerHTML = `<div class="box"><div class="t">${o.title}</div><div class="l">${o.line}</div><div class="n">第 ${o.cycles} 次合上\u3000·\u3000${o.next}</div></div>`;
       ending.classList.add('show'); endingOn = true; document.body.classList.add('ending');
     },
     hideEnding() { if (!endingOn) return; endingOn = false; ending.classList.remove('show'); document.body.classList.remove('ending'); },

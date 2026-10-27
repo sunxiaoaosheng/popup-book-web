@@ -1,6 +1,7 @@
 // 四季配色。只 lerp 已有材质，换季不重建几何体。
 import * as THREE from '../vendor/three.module.js';
 import { matCache } from './materials.js';
+import { seasonIndex } from './rules.js';
 
 const RAW = [
   { day: '#f7d3c2', mid: '#eab0a0', night: '#1c2a5a', sun: '#fff0e4', sunI: 2.6, hemi: '#fff1ec' },
@@ -100,7 +101,7 @@ export function createSeason(W) {
 
   function setSeason(i, instant = false) {
     if (!seasonMats.length) initSeasonMats();
-    i = ((i % 4) + 4) % 4;
+    i = seasonIndex(i);
     const { S } = W;
     if (instant) {
       SEASON.from = SEASON.to = i;

@@ -11,6 +11,7 @@ DOCKER_MODE="auto"
 RESTART=0
 PORT=8000
 WS_PORT=8765
+HTTP_PORT=""
 HZ=45
 SMOOTH=0
 OFFSET=0
@@ -44,6 +45,7 @@ usage() {
   --restart    先停掉本脚本上次拉起的进程/容器，再启动
   --port N     静态页端口，默认 8000
   --ws-port N  角度桥端口，默认 8765
+  --http-port N  桥的 HTTP 健康检查端口，默认是 ws 端口 + 1
   --hz N       桥的广播频率，默认 45
   --smooth N   桥的低通系数 0~0.95，默认 0
   --offset N   角度偏移（度），默认 0
@@ -53,11 +55,15 @@ usage() {
 再执行一次相同模式：服务还健康就只打印地址并退出，不会占第二个端口。
 Ctrl-C 只停掉这一次前台拉起的进程和容器。
 
+命令:
+  ./start.sh test [--yes]   ESLint、tsc、单元测试、无头浏览器冒烟
+
 示例:
   ./start.sh
   ./start.sh --slider --port 8123
   ./start.sh --fake --no-docker --yes
   ./start.sh --sensor --smooth 0.5
+  ./start.sh test --yes
 EOF
 }
 
@@ -178,6 +184,7 @@ load_session() {
   SAVED_MODE=""
   SAVED_PORT=""
   SAVED_WS_PORT=""
+  SAVED_HTTP_PORT=""
   SAVED_TRANSPORT=""
   SAVED_WEB_PID=""
   SAVED_BRIDGE_PID=""
@@ -194,6 +201,7 @@ write_session() {
 SAVED_MODE=$MODE
 SAVED_PORT=$PORT
 SAVED_WS_PORT=$WS_PORT
+SAVED_HTTP_PORT=$HTTP_PORT
 SAVED_TRANSPORT=$TRANSPORT
 SAVED_WEB_PID=${WEB_PID:-}
 SAVED_BRIDGE_PID=${BRIDGE_PID:-}
@@ -245,9 +253,11 @@ print_status() {
     ok "模式     滑块。没有启动角度桥，拖页面底部滑块即可"
   elif [[ "$MODE" == "fake" ]]; then
     ok "角度桥   ws://127.0.0.1:${WS_PORT}   （假数据 0→130→0）"
+    ok "健康检查 http://127.0.0.1:${HTTP_PORT}/health"
     ok "绿灯路径 打开上面的地址，左下圆点变绿，滑块禁用，书跟着动"
   else
     ok "角度桥   ws://127.0.0.1:${WS_PORT}   （宿主机上的真实合页）"
+    ok "健康检查 http://127.0.0.1:${HTTP_PORT}/health"
     ok "说明     MacBook HID 不进 Docker。桥在本机，静态页可以在容器里"
   fi
 }
@@ -257,7 +267,7 @@ wait_healthy() {
   for i in $(seq 1 40); do
     if web_ok "$PORT"; then
       if [[ "$MODE" == "slider" ]]; then return 0; fi
-      if ws_probe "$WS_PORT" handshake; then return 0; fi
+      if ws_probe "$WS_PORT" handshake && health_ok "$HTTP_PORT"; then return 0; fi
     fi
     if [[ -n "${WEB_PID:-}" ]] && ! kill -0 "$WEB_PID" 2>/dev/null; then
       log "静态服务提前退出。日志："
@@ -332,16 +342,91 @@ prepare_images() {
   fi
 }
 
+health_ok() {
+  local body
+  body="$(curl -fsS --max-time 2 "http://127.0.0.1:${1}/health" 2>/dev/null || true)"
+  [[ "$body" == *'"ok": true'* ]]
+}
+
 same_request() {
   load_session || return 1
-  [[ "$SAVED_MODE" == "$MODE" && "$SAVED_PORT" == "$PORT" && "$SAVED_WS_PORT" == "$WS_PORT" ]]
+  [[ "$SAVED_MODE" == "$MODE" && "$SAVED_PORT" == "$PORT" && "$SAVED_WS_PORT" == "$WS_PORT" && "$SAVED_HTTP_PORT" == "$HTTP_PORT" ]]
 }
 
 already_healthy() {
   web_ok "$PORT" || return 1
   if [[ "$MODE" == "slider" ]]; then return 0; fi
-  ws_probe "$WS_PORT" handshake
+  ws_probe "$WS_PORT" handshake && health_ok "$HTTP_PORT"
 }
+
+run_test_suite() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --yes) YES=1 ;;
+      -h|--help)
+        cat <<'EOF'
+用法: ./start.sh test [--yes]
+
+依次跑 ESLint、tsc（checkJs）、node 单元测试、Python 单元测试、无头浏览器冒烟。
+缺 node_modules 或 Python 测试依赖时会询问；--yes 直接安装。
+EOF
+        exit 0
+        ;;
+      *) die "test 不认识：$1（试试 ./start.sh test --help）" ;;
+    esac
+    shift
+  done
+  command -v node >/dev/null 2>&1 || die "需要 node"
+  command -v npm >/dev/null 2>&1 || die "需要 npm"
+  mkdir -p "$RUN_DIR"
+  if [[ ! -x "$ROOT/node_modules/.bin/eslint" || ! -x "$ROOT/node_modules/.bin/tsc" ]]; then
+    confirm "安装前端检查依赖（npm install）？" || die "没有 eslint / tsc，已取消"
+    npm install
+  fi
+  ensure_venv "requirements.txt"
+  if ! "$PY" -c "import playwright, PIL" >/dev/null 2>&1; then
+    confirm "安装 tests/requirements.txt（playwright、pillow）？" || die "没有浏览器测试依赖，已取消"
+    "$ROOT/backend/.venv/bin/pip" install -r "$ROOT/tests/requirements.txt"
+  fi
+  if [[ -x /usr/bin/google-chrome ]]; then
+    export CHROME=/usr/bin/google-chrome
+  elif command -v chromium >/dev/null 2>&1; then
+    export CHROME="$(command -v chromium)"
+  else
+    log "本机没有 Chrome，安装 Playwright 自带的 Chromium"
+    "$PY" -m playwright install chromium
+  fi
+  log "ESLint"
+  "$ROOT/node_modules/.bin/eslint" frontend/js tests/unit
+  log "tsc --checkJs"
+  "$ROOT/node_modules/.bin/tsc" -p "$ROOT/tsconfig.json" --noEmit --pretty false
+  log "node --test"
+  node --test "$ROOT"/tests/unit/*.test.js
+  log "python unittest"
+  PYTHONPATH="$ROOT/backend" "$PY" -m unittest discover -s "$ROOT/tests/unit" -p 'test_*.py'
+  local tport=8133 started=0
+  if ! web_ok "$tport"; then
+    if port_busy "$tport"; then die "端口 ${tport} 被占用，而且不是这本书的页面"; fi
+    python3 -m http.server "$tport" --bind 127.0.0.1 --directory "$ROOT/frontend" >"$RUN_DIR/test-web.log" 2>&1 &
+    started=$!
+    local i
+    for i in $(seq 1 40); do web_ok "$tport" && break; sleep 0.1; done
+    web_ok "$tport" || { kill "$started" 2>/dev/null || true; die "测试用静态页没有起来"; }
+  fi
+  log "端到端冒烟 http://127.0.0.1:${tport}/"
+  local rc=0
+  POPUP_BASE="http://127.0.0.1:${tport}/index.html" POPUP_WS=18665 POPUP_HTTP=18666 \
+    "$PY" "$ROOT/tests/e2e/smoke.py" || rc=$?
+  if [[ "$started" != 0 ]]; then kill "$started" 2>/dev/null || true; wait "$started" 2>/dev/null || true; fi
+  if [[ "$rc" != 0 ]]; then die "冒烟失败（退出码 ${rc}）"; fi
+  ok "lint、类型检查、单元测试、冒烟都过了"
+}
+
+if [[ "${1:-}" == "test" ]]; then
+  shift
+  run_test_suite "$@"
+  exit 0
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -363,6 +448,11 @@ while [[ $# -gt 0 ]]; do
       WS_PORT="${1:-}"
       is_int "$WS_PORT" || die "--ws-port 需要数字"
       ;;
+    --http-port)
+      shift
+      HTTP_PORT="${1:-}"
+      is_int "$HTTP_PORT" || die "--http-port 需要数字"
+      ;;
     --hz)
       shift
       HZ="${1:-}"
@@ -383,6 +473,11 @@ done
 [[ "$DOCKER_MODE" == "yes" && "$MODE" == "sensor" ]] && log "真实合页桥仍在宿主机运行；Docker 只提供静态页"
 if [[ "$DOCKER_MODE" != "auto" && "$DOCKER_MODE" != "yes" && "$DOCKER_MODE" != "no" ]]; then
   die "内部错误：DOCKER_MODE"
+fi
+
+if [[ -z "$HTTP_PORT" ]]; then HTTP_PORT=$((WS_PORT + 1)); fi
+if [[ "$MODE" != "slider" && ( "$HTTP_PORT" == "$PORT" || "$HTTP_PORT" == "$WS_PORT" ) ]]; then
+  die "健康检查端口 ${HTTP_PORT} 和页面或 WebSocket 撞了"
 fi
 
 command -v python3 >/dev/null 2>&1 || die "需要 python3"
@@ -430,6 +525,9 @@ fi
 if [[ "$MODE" != "slider" ]] && port_busy "$WS_PORT"; then
   die "端口 ${WS_PORT} 已被其他程序占用。换 --ws-port，或用 --restart 停掉本脚本自己的桥"
 fi
+if [[ "$MODE" != "slider" ]] && port_busy "$HTTP_PORT"; then
+  die "端口 ${HTTP_PORT} 已被其他程序占用。换 --http-port"
+fi
 
 if [[ "$TRANSPORT" == "docker" ]]; then
   if ! prepare_images; then
@@ -457,7 +555,7 @@ if [[ "$TRANSPORT" == "docker" ]]; then
   if [[ "$MODE" == "fake" ]]; then
     log "启动容器 popup-book-bridge（假角度）"
     docker rm -f popup-book-bridge >/dev/null 2>&1 || true
-    BRIDGE_CID="$(docker run -d --name popup-book-bridge -p "127.0.0.1:${WS_PORT}:8765" popup-book-bridge:local --port 8765 --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET")"
+    BRIDGE_CID="$(docker run -d --name popup-book-bridge -p "127.0.0.1:${WS_PORT}:8765" -p "127.0.0.1:${HTTP_PORT}:8766" popup-book-bridge:local --port 8765 --http-port 8766 --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET")"
   fi
 else
   log "本机静态服务 127.0.0.1:${PORT}  ← frontend/"
@@ -469,10 +567,10 @@ if [[ "$MODE" != "slider" && -z "${BRIDGE_CID}" ]]; then
   if [[ "$MODE" == "fake" ]]; then
     ensure_venv "requirements.txt"
     log "本机假角度桥 ws://127.0.0.1:${WS_PORT}"
-    "$PY" "$ROOT/backend/bridge.py" --fake --host 127.0.0.1 --port "$WS_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
+    "$PY" "$ROOT/backend/bridge.py" --fake --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
   else
     log "本机真实合页桥 ws://127.0.0.1:${WS_PORT}（不在 Docker 里）"
-    "$PY" "$ROOT/backend/bridge.py" --host 127.0.0.1 --port "$WS_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
+    "$PY" "$ROOT/backend/bridge.py" --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
   fi
   BRIDGE_PID=$!
 fi

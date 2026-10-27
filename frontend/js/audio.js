@@ -14,7 +14,7 @@ export class Sound {
   /** 必须在用户手势（点击/按键/触摸）里调用 */
   unlock() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
+    const AC = window.AudioContext || /** @type {typeof AudioContext | undefined} */ (/** @type {any} */ (window).webkitAudioContext);
     if (!AC) return;
     try { this.attach(new AC()); if (this.ctx.state === 'suspended') this.ctx.resume(); } catch (e) { console.warn('audio unavailable', e); }
   }

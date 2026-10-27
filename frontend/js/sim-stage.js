@@ -1,7 +1,9 @@
 // 盖页、日晷光线、台阶与树、小屋外壳。小猫的姿势在下一步。
 import * as THREE from '../vendor/three.module.js';
 import { clamp, lerp, sstep } from './math.js';
-import { SEASONS, TUNING } from './story.js';
+import { SEASONS } from './story.js';
+import { TUNING } from './tuning.js';
+import { morphProgress, timeOfDay as timeOfDayName } from './rules.js';
 import { SKY } from './season.js';
 import { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './build-sky.js';
 
@@ -26,12 +28,6 @@ function erect(b, q, obj, h, th, tanTh, lidY) {
   }
   phi = Math.max(0, phi);
   return want > Math.PI / 2 ? phi + (want - Math.PI / 2) : Math.min(phi, want);
-}
-
-function timeOfDay(uc) {
-  let name = TIMES[0][1];
-  for (let i = 1; i < TIMES.length; i++) if (uc >= TIMES[i][0]) name = TIMES[i][1];
-  return name;
 }
 
 export function stepStage(W, dt) {
@@ -75,18 +71,15 @@ export function stepStage(W, dt) {
   }
 
   const SEASON = W.SEASON;
-  if (SEASON.t < 1) {
-    const lo = TUNING.seasonMorphLo, hi = TUNING.seasonMorphHi;
-    if (A >= lo) {
-      const p = clamp((A - lo) / Math.max(1e-3, hi - lo), 0, 1);
-      if (p > SEASON.t) {
-        SEASON.t = p;
-        W.applySeasonVisuals();
-      }
-      if (!S.seasonMorphSaid && SEASON.from !== SEASON.to) {
-        S.seasonMorphSaid = true;
-        W.say(`${SEASONS[SEASON.from].name} → ${SEASONS[SEASON.to].name} · 换季了`, 4.2);
-      }
+  if (SEASON.t < 1 && A >= TUNING.seasonMorphLo) {
+    const p = morphProgress(A);
+    if (p > SEASON.t) {
+      SEASON.t = p;
+      W.applySeasonVisuals();
+    }
+    if (!S.seasonMorphSaid && SEASON.from !== SEASON.to) {
+      S.seasonMorphSaid = true;
+      W.say(`${SEASONS[SEASON.from].name} → ${SEASONS[SEASON.to].name} · 换季了`, 4.2);
     }
   }
 
@@ -139,7 +132,7 @@ export function stepStage(W, dt) {
   S.goldP = goldP;
   F.goldP = goldP;
   S.nightP = nightP;
-  S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : timeOfDay(uc));
+  S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : timeOfDayName(uc, TIMES));
   W.gfx.scene.background.copy(BG0).lerp(BG1, nightP * 0.6);
 
   for (const t of W.terraces) {

@@ -175,7 +175,8 @@ export function buildProps(cabin, SILL_TOP) {
   const props = [];
   const mk = () => {
     const g = new THREE.Group();
-    g.position.set(1.24, SILL_TOP, 0.3);
+    // 窗台小猫在 z≈0.36。道具再靠前一点，并抬高 1 厘米，避免和窗台顶面、尾巴穿在一起。
+    g.position.set(1.18, SILL_TOP + 0.012, 0.5);
     g.visible = false;
     cabin.add(g);
     props.push(g);
@@ -210,10 +211,10 @@ export function buildProps(cabin, SILL_TOP) {
   const pk = mk();
   pk.add(cut(ellipseShape(0, 0.1, 0.15, 0.105), '#f08a2a', 0, 0.06));
   for (const sx of [-1, 1]) pk.add(cut(ellipseShape(sx * 0.075, 0.1, 0.05, 0.1), '#d97020', 0.06, 0.01));
-  pk.add(cut(rectShape(-0.015, 0.19, 0.03, 0.06), '#6a8a3a', 0.02, 0.03));
-  pk.add(cut(polyShape([[-0.07, 0.12], [-0.03, 0.12], [-0.05, 0.16]]), '#7a3a10', 0.072, 0.006));
-  pk.add(cut(polyShape([[0.03, 0.12], [0.07, 0.12], [0.05, 0.16]]), '#7a3a10', 0.072, 0.006));
-  pk.add(cut(polyShape([[-0.06, 0.07], [0.06, 0.07], [0.03, 0.045], [-0.03, 0.045]]), '#7a3a10', 0.072, 0.006));
+  pk.add(cut(rectShape(-0.014, 0.17, 0.028, 0.1), '#6a8a3a', 0.058, 0.016));
+  pk.add(cut(polyShape([[-0.07, 0.12], [-0.03, 0.12], [-0.05, 0.16]]), '#7a3a10', 0.082, 0.006));
+  pk.add(cut(polyShape([[0.03, 0.12], [0.07, 0.12], [0.05, 0.16]]), '#7a3a10', 0.082, 0.006));
+  pk.add(cut(polyShape([[-0.06, 0.07], [0.06, 0.07], [0.03, 0.045], [-0.03, 0.045]]), '#7a3a10', 0.082, 0.006));
   const mug = mk();
   mug.add(cut(rectShape(-0.07, 0, 0.14, 0.16), '#f4efe4', 0, 0.06));
   {

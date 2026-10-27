@@ -7,6 +7,6 @@
 ## 怎么验证
 
 - [ ] `./start.sh test --yes`
-- [ ] `./start.sh --fake --no-docker --yes` 能打开，Ctrl-C 会放开端口
+- [ ] `./start.sh --fake --no-docker` 转到后台并能打开，`./start.sh stop` 会放开端口
 
 没跑过的部分（Docker、真实合页）写在这里。

@@ -7,13 +7,14 @@
 
 ```bash
 ./start.sh
+./start.sh stop
 ```
 
-浏览器打开脚本打印的地址。没有 Docker 就加 `--no-docker`。检查用 `./start.sh test`。细节在第三节，`--help` 看全部开关。
+`./start.sh` 转到后台，终端马上空出来。地址打在终端上，也写进 `logs/popup-book.log`。停掉用 `./start.sh stop`。没有 Docker 就加 `--no-docker`。检查用 `./start.sh test`。细节在下一节和第三节。
 
 卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
 
-**现在是 v9。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
+**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
 
 ## 一、文件
 
@@ -38,7 +39,9 @@
 | `backend/protocol.py` | 角度帧、心跳、`/health` 的字段 |
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
-| `start.sh` | 一条命令拉起静态页和桥。`./start.sh test` 跑检查 |
+| `start.sh` | 后台拉起静态页和桥。`./start.sh stop` 停，`./start.sh test` 跑检查 |
+| `logs/popup-book.log` | 后台日志（gitignore） |
+| `logs/popup-book.pid` | 后台进程号，`stop` 读这个文件 |
 | `packaging/popup-book` | 和 `./start.sh` 同一条命令，给 Homebrew 用 |
 | `packaging/homebrew/` | formula（源码安装）。cask 只是示例 |
 | `packaging/mac/` | 未签名的 `.app` / `.dmg` 脚本。Linux 上跳过映像 |
@@ -115,31 +118,71 @@
 
 ## 三、运行
 
+### 怎么开、怎么停
+
 在仓库根目录：
 
 ```bash
 ./start.sh
+./start.sh stop
 ```
 
-默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:8000>）。左下圆点变绿，滑块被禁用，书跟着 0→130→0 开合。`Ctrl-C` 停掉这一次拉起的页面和桥。
+`./start.sh` 和 `./start.sh --sensor` 都转到**后台**，不占当前终端。就绪之后脚本退出，页面和桥继续跑。
+
+- 日志：`logs/popup-book.log`（每次启动往下追加）
+- 进程号：`logs/popup-book.pid`
+- 停止：`./start.sh stop`。它读 pid 文件，发 TERM。脚本自己的清理会关掉这一次拉起的静态页和桥。pid 已经失效时，仍会再看 `.run/session.env` 里记下的子进程。
+- 不要用笼统的 `pkill python` 或 `pkill -f http.server`，那会误伤别的程序。
+
+后台启动不会问 `[y/n]`，缺的 Python 依赖会直接装。`.app` 里的启动器设了 `POPUP_FOREGROUND=1`，那个进程留在前台，方便系统把它当成正在运行的应用；另开终端仍可以用仓库里的 `./start.sh stop`（pid 写在包内的 `logs/`）。
+
+默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:8000>）。左下圆点变绿，滑块被禁用，书跟着 0→130→0 开合。
 
 同一模式再执行一次：服务还健康的话只打印地址，不会占第二个端口。
 
 ```bash
 ./start.sh --help
-./start.sh --slider                 # 只开网页，用底部滑块
-./start.sh --fake                   # 默认
+./start.sh --slider --no-docker     # 只开网页，用底部滑块，不启动桥
+./start.sh --fake --no-docker       # 假角度。默认就是这个，只是不走 Docker
 ./start.sh --sensor                 # 真实 MacBook 合页。仅 macOS，桥在宿主机
-./start.sh --yes                    # 缺依赖时直接装，不再问
 ./start.sh --no-docker              # 本机 python，不建容器
 ./start.sh --docker                 # 必须用 Docker
-./start.sh --restart                # 停掉本脚本上次的进程/容器再启动
+./start.sh --restart                # 停掉上次的进程/容器再启动
 ./start.sh --port 8123 --ws-port 8765
 ./start.sh --sensor --smooth 0.5 --offset -3
+./start.sh stop
 ./start.sh test --yes              # ESLint、tsc、单元测试、无头冒烟
 ```
 
-缺依赖会先问 `[y/n]`：`backend/.venv` 和 pip、macOS 上的 `brew install hidapi`、第一次构建镜像时拉取 `python:3.12-alpine`。`--yes` 才跳过询问。
+前台交互（没转到后台时，例如 `.app`）缺依赖会先问 `[y/n]`：`backend/.venv` 和 pip、macOS 上的 `brew install hidapi`、第一次构建镜像时拉取 `python:3.12-alpine`。`--yes` 才跳过询问。后台启动等同于带了 `--yes`。
+
+### 假传感器和滑块
+
+- `./start.sh` 或 `./start.sh --fake`：不读硬件，桥广播 0→130→0 的假角度。没有 Mac 也能完整体验。
+- `./start.sh --slider --no-docker`：不起桥。打开页面，拖底部滑块，或按 `←` / `→`。左下圆点是灰的，「模拟模式」。
+- 页面上的「自动演示」会自己来回扫角度，不需要桥。
+
+### 真机合页
+
+只在 macOS 上。角度来自 MacBook 的 HID，Docker 里读不到，所以桥一定在宿主机。
+
+```bash
+brew install hidapi
+./start.sh --sensor
+```
+
+这会装 `backend/requirements-sensor.txt`（`pybooklid`）并在后台启动。权限或「找不到传感器」见第四节。先用 `./start.sh --fake` 确认页面是好的，再查传感器。
+
+### 依赖
+
+| 要什么 | 什么时候 |
+|---|---|
+| `python3`、`curl` | 跑页面和桥 |
+| `node`、`npm` | 只在 `./start.sh test`（ESLint、`tsc`） |
+| Docker（可选） | 不写 `--no-docker` 且守护进程可用时，静态页和假桥进容器 |
+| `hidapi`、`pybooklid` | 只在 `./start.sh --sensor` |
+
+目录见第一节。`logs/`、`.run/`、`backend/.venv/` 都不进 git。
 
 不想先克隆仓库、也还没有 Apple 开发者账号时，用 Homebrew formula（源码 + `python@3.12`，命令是 `popup-book`）：
 

@@ -1,5 +1,6 @@
 // 小猫的一天：清晨伸懒腰、窗台、正午喷嚏、黄昏看日落、追萤火虫、抚摸。
-import { clamp, lerp, sstep, smooth } from './math.js';
+import { clamp, lerp, smooth } from './math.js';
+import { CHASE_BOX, chaseAim, doorPeek } from './kitten-place.js';
 import { TUNING } from './tuning.js';
 import { wantsDawnStretch } from './rules.js';
 import { emitAll } from './bus.js';
@@ -75,14 +76,19 @@ export function stepKitten(W, dt) {
       const u = clamp(hopP, 0, 1.06);
       const uc = clamp(u, 0, 1);
       const e = uc * uc * (3 - 2 * uc);
-      px = lerp(-0.4, W.SILL_X, e);
-      pz = -0.15 + 0.5 * sstep(0, 0.28, uc);
-      py = lerp(-0.72, 0, clamp(peekP, 0, 1.08)) + W.SILL_TOP * e + 0.5 * Math.sin(Math.PI * uc) * (uc > 0 && uc < 1 ? 1 : 0);
+      const peek = doorPeek(clamp(peekP, 0, 1));
+      px = lerp(peek.px, W.SILL_X, e);
+      pz = lerp(peek.pz, 0.36, e);
+      py = peek.py + W.SILL_TOP * e + 0.5 * Math.sin(Math.PI * uc) * (uc > 0 && uc < 1 ? 1 : 0);
       const air = Math.sin(Math.PI * uc);
-      sxs = 0.9 * (1 - 0.1 * air);
-      sys = 0.9 * (1 + 0.16 * air);
+      const sc = lerp(peek.scale, 0.9, e);
+      sxs = sc * (1 - 0.1 * air);
+      sys = sc * (1 + 0.16 * air);
       rz = (uc < 1 ? 0.35 * Math.sin(Math.PI * uc) * (1 - 2 * uc) : 0);
-      if (S.shy > 0.01) { px -= 0.14 * S.shy * (1 - uc); py -= 0.1 * S.shy * (1 - uc); }
+      if (S.shy > 0.01 && e > 0.55) {
+        px -= 0.14 * S.shy * (1 - uc);
+        py = Math.max(peek.py, py - 0.1 * S.shy * (1 - uc));
+      }
       py += S.startled * 0.2 * Math.abs(Math.sin(T * 14)) * uc;
       sys *= 1 + 0.06 * S.startled;
       onSill = uc > 0.98 && S.chaseP < 0.01;
@@ -119,17 +125,18 @@ export function stepKitten(W, dt) {
       sxs *= 1 - 0.05 * pounce;
       if (chE > 0.002) {
         S.flyAt += dt;
-        const fx = 1.9 * Math.sin(S.flyAt * 0.55) - 0.1;
-        const fz = 1.55 + 0.65 * Math.sin(S.flyAt * 0.37 + 1.0);
-        const fy = 0.55 + 0.3 * Math.sin(S.flyAt * 1.7);
+        const aim = chaseAim(S.flyAt);
+        const fx = aim.fx;
+        const fz = aim.fz;
+        const fy = aim.fy;
         S.fx = fx; S.fz = fz; S.fy = fy;
         const prevx = S.kx;
-        S.kx = smooth(S.kx || fx, fx, dt, 0.7);
-        S.kz = smooth(S.kz, fz + 0.15, dt, 0.8);
+        S.kx = clamp(smooth(S.kx || fx, fx, dt, 0.7), CHASE_BOX.x0, CHASE_BOX.x1);
+        S.kz = clamp(smooth(S.kz, fz, dt, 0.8), CHASE_BOX.z0, CHASE_BOX.z1);
         const mv = (S.kx - prevx) / Math.max(dt, 1e-4);
         S.kvx = smooth(S.kvx, mv, dt, 0.2);
         const hopB = Math.abs(Math.sin(T * 7.5)) * 0.12 * clamp(Math.abs(S.kvx) * 1.2, 0.2, 1) + Math.pow(Math.max(0, Math.sin(T * 1.2)), 10) * 0.45;
-        const gx = S.kx, gy = hopB, gz = S.kz;
+        const gx = S.kx, gy = 0.06 + hopB, gz = S.kz;
         const arc = Math.sin(Math.PI * chE) * 0.9;
         px = lerp(px, gx, chE);
         py = lerp(py, gy, chE) + arc;
@@ -185,7 +192,7 @@ export function stepKitten(W, dt) {
     K.head.rotation.x = napVis ? 0.1 : -S.lookY * 0.2;
     K.earL.rotation.z = 0.12 * Math.max(0, Math.sin(T * 0.9 + 1)) ** 6 * 4 + 0.05 * Math.sin(T * 3) * peeking + 0.5 * S.startled + 0.35 * S.duck;
     K.earR.rotation.z = -0.1 * Math.max(0, Math.sin(T * 0.7)) ** 6 * 4 - 0.5 * S.startled - 0.35 * S.duck;
-    const amp = lerp(0.12, 0.34, hopP) * lerp(1, 0.35, sleepish);
+    const amp = lerp(hopP < 0.25 ? 0.04 : 0.12, 0.34, hopP) * lerp(1, 0.35, sleepish);
     K.tail.rotation.z = amp * Math.sin(T * lerp(3, 2.0, sleepish)) - 0.1 * sleepish + 0.5 * S.startled + S.petE * 0.18 * Math.sin(T * 6) + 0.4 * chE * Math.sin(T * 9);
     const yawnEnv = (S.yawnT < 1.8 && (S.lastDir < 0 && A > 76 && eggP < 0.2 && T - S.lastShake > 3)) ? Math.sin(Math.PI * clamp(S.yawnT / 1.8, 0, 1)) : 0;
     const mo = Math.max(yawnEnv, lick * (0.4 + 0.6 * Math.abs(Math.sin(T * 9))), S.startled > 0.3 ? 0.5 : 0);

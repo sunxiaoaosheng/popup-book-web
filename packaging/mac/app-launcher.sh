@@ -3,6 +3,7 @@
 set -euo pipefail
 RES="$(cd "$(dirname "$0")/../Resources" && pwd)"
 export POPUP_BRIDGE_BIN="$RES/popup-book-bridge"
+export POPUP_FOREGROUND=1
 cd "$RES"
 if [[ -t 1 ]]; then
   exec "$RES/start.sh" --no-docker "$@"

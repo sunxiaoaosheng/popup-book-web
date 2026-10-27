@@ -5,6 +5,7 @@ __pycache__/
 node_modules/
 shots/
 .run/
+logs/
 .DS_Store
 dist/
 build/

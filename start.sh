@@ -56,17 +56,21 @@ usage() {
   POPUP_OPEN_BROWSER=1  健康之后打开静态页（macOS 用 open，Linux 用 xdg-open）。
 
 没有写 --docker / --no-docker 时：Docker 守护进程可用就用容器，否则用本机 python。
+./start.sh 和 ./start.sh --sensor 会转到后台，不占当前终端。
+日志在 logs/popup-book.log，进程号在 logs/popup-book.pid。
 再执行一次相同模式：服务还健康就只打印地址并退出，不会占第二个端口。
-Ctrl-C 只停掉这一次前台拉起的进程和容器。
+后台进程不询问 [y/n]，缺依赖会直接安装。
 
 命令:
-  ./start.sh test [--yes]   ESLint、tsc、单元测试、无头浏览器冒烟
+  ./start.sh stop            按 pid 文件停掉后台的页面和桥
+  ./start.sh test [--yes]    ESLint、tsc、单元测试、无头浏览器冒烟
 
 示例:
   ./start.sh
-  ./start.sh --slider --port 8123
-  ./start.sh --fake --no-docker --yes
+  ./start.sh --slider --no-docker
+  ./start.sh --fake --no-docker
   ./start.sh --sensor --smooth 0.5
+  ./start.sh stop
   ./start.sh test --yes
 EOF
 }
@@ -438,9 +442,93 @@ EOF
   ok "lint、类型检查、单元测试、冒烟都过了"
 }
 
+LOG_FILE="$ROOT/logs/popup-book.log"
+PID_FILE="$ROOT/logs/popup-book.pid"
+
+stop_background() {
+  local pid=""
+  if [[ -f "$PID_FILE" ]]; then
+    pid="$(tr -cd '0-9' < "$PID_FILE")"
+  fi
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    log "停止 pid ${pid}"
+    kill -TERM "$pid" 2>/dev/null || true
+    local i
+    for i in $(seq 1 40); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
+  elif [[ -n "$pid" ]]; then
+    log "pid ${pid} 已经不在，按 session 再清一次"
+  fi
+  stop_saved
+  rm -f "$PID_FILE"
+  ok "已停止。日志仍在 logs/popup-book.log"
+}
+
+launch_background() {
+  mkdir -p "$ROOT/logs"
+  local offset=0
+  if [[ -f "$LOG_FILE" ]]; then
+    offset="$(wc -c < "$LOG_FILE")"
+    offset="$((offset))"
+  fi
+  printf '\n---- %s ----\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" >> "$LOG_FILE"
+  POPUP_DAEMON=1 nohup "$ROOT/start.sh" "$@" >> "$LOG_FILE" 2>&1 &
+  local child=$!
+  disown "$child" 2>/dev/null || true
+  local i ready=0
+  for i in $(seq 1 240); do
+    if [[ -f "$LOG_FILE" ]] && tail -c +$((offset + 1)) "$LOG_FILE" | grep -q 'POPUP_READY'; then
+      ready=1
+      break
+    fi
+    if ! kill -0 "$child" 2>/dev/null; then
+      break
+    fi
+    sleep 0.25
+  done
+  if [[ "$ready" != 1 ]]; then
+    log "后台没有进入就绪。这一次的日志："
+    tail -c +$((offset + 1)) "$LOG_FILE" >&2 || true
+    return 1
+  fi
+  tail -c +$((offset + 1)) "$LOG_FILE" | grep '^\[' | grep -v 'POPUP_READY' || true
+  local pid=""
+  if [[ -f "$PID_FILE" ]]; then
+    pid="$(tr -cd '0-9' < "$PID_FILE")"
+  fi
+  if kill -0 "$child" 2>/dev/null; then
+    ok "已转到后台（pid ${pid:-$child}）。停止：./start.sh stop"
+  else
+    ok "服务已在跑。停止：./start.sh stop"
+  fi
+  ok "日志 logs/popup-book.log"
+  return 0
+}
+
+if [[ "${1:-}" == "stop" ]]; then
+  stop_background
+  exit 0
+fi
+
 if [[ "${1:-}" == "test" ]]; then
   shift
   run_test_suite "$@"
+  exit 0
+fi
+
+for _arg in "$@"; do
+  if [[ "$_arg" == "-h" || "$_arg" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+done
+if [[ -z "${POPUP_DAEMON:-}" && -z "${POPUP_FOREGROUND:-}" ]]; then
+  launch_background "$@" || exit 1
   exit 0
 fi
 
@@ -486,6 +574,10 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ -n "${POPUP_DAEMON:-}" ]]; then
+  YES=1
+fi
+
 [[ "$DOCKER_MODE" == "yes" && "$MODE" == "sensor" ]] && log "真实合页桥仍在宿主机运行；Docker 只提供静态页"
 if [[ "$DOCKER_MODE" != "auto" && "$DOCKER_MODE" != "yes" && "$DOCKER_MODE" != "no" ]]; then
   die "内部错误：DOCKER_MODE"
@@ -520,6 +612,7 @@ if same_request && already_healthy && [[ "$RESTART" != 1 ]]; then
   ok "已经在运行（${MODE}，${TRANSPORT}），不重复启动"
   print_status
   maybe_open_browser
+  printf '[start] POPUP_READY\n'
   exit 0
 fi
 
@@ -620,9 +713,17 @@ if [[ "$MODE" != "slider" ]]; then
 fi
 
 write_session
+mkdir -p "$ROOT/logs"
+printf '%s\n' "$$" > "$PID_FILE"
 print_status
 maybe_open_browser
-log "Ctrl-C 停止。日志在 .run/ （已 gitignore）"
+if [[ -n "${POPUP_FOREGROUND:-}" ]]; then
+  log "留在前台。Ctrl-C 停止，或另开终端 ./start.sh stop"
+else
+  log "已在后台运行。停止：./start.sh stop"
+fi
+log "日志：logs/popup-book.log"
+printf '[start] POPUP_READY\n'
 while true; do
   if [[ -n "${WEB_PID:-}" ]] && ! kill -0 "$WEB_PID" 2>/dev/null; then
     log "静态服务退出了。最后日志："

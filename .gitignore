@@ -6,3 +6,6 @@ node_modules/
 shots/
 .run/
 .DS_Store
+dist/
+build/
+*.spec

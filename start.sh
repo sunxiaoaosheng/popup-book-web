@@ -51,6 +51,10 @@ usage() {
   --offset N   角度偏移（度），默认 0
   -h, --help   显示本说明
 
+环境变量:
+  POPUP_BRIDGE_BIN      可执行的桥。设置后本机桥用它，不再创建 backend/.venv。
+  POPUP_OPEN_BROWSER=1  健康之后打开静态页（macOS 用 open，Linux 用 xdg-open）。
+
 没有写 --docker / --no-docker 时：Docker 守护进程可用就用容器，否则用本机 python。
 再执行一次相同模式：服务还健康就只打印地址并退出，不会占第二个端口。
 Ctrl-C 只停掉这一次前台拉起的进程和容器。
@@ -259,6 +263,18 @@ print_status() {
     ok "角度桥   ws://127.0.0.1:${WS_PORT}   （宿主机上的真实合页）"
     ok "健康检查 http://127.0.0.1:${HTTP_PORT}/health"
     ok "说明     MacBook HID 不进 Docker。桥在本机，静态页可以在容器里"
+  fi
+}
+
+maybe_open_browser() {
+  [[ "${POPUP_OPEN_BROWSER:-}" == "1" ]] || return 0
+  local url="http://127.0.0.1:${PORT}/"
+  if command -v open >/dev/null 2>&1; then
+    open "$url" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$url" >/dev/null 2>&1 || true
+  else
+    log "POPUP_OPEN_BROWSER=1，但这台机器没有 open 或 xdg-open：${url}"
   fi
 }
 
@@ -503,6 +519,7 @@ esac
 if same_request && already_healthy && [[ "$RESTART" != 1 ]]; then
   ok "已经在运行（${MODE}，${TRANSPORT}），不重复启动"
   print_status
+  maybe_open_browser
   exit 0
 fi
 
@@ -541,7 +558,11 @@ fi
 
 if [[ "$MODE" == "sensor" ]]; then
   ensure_hidapi
-  ensure_venv "requirements-sensor.txt"
+  if [[ -z "${POPUP_BRIDGE_BIN:-}" ]]; then
+    ensure_venv "requirements-sensor.txt"
+  else
+    log "POPUP_BRIDGE_BIN 已设置。--sensor 要求这个二进制带上 pybooklid；默认打包的桥只有 websockets"
+  fi
 fi
 
 trap cleanup_owned EXIT
@@ -564,13 +585,23 @@ else
 fi
 
 if [[ "$MODE" != "slider" && -z "${BRIDGE_CID}" ]]; then
+  bridge_cmd=()
+  if [[ -n "${POPUP_BRIDGE_BIN:-}" ]]; then
+    [[ -x "$POPUP_BRIDGE_BIN" ]] || die "POPUP_BRIDGE_BIN 不是可执行文件：${POPUP_BRIDGE_BIN}"
+    log "使用打包好的桥 ${POPUP_BRIDGE_BIN}"
+    bridge_cmd=("$POPUP_BRIDGE_BIN")
+  else
+    if [[ "$MODE" == "fake" ]]; then
+      ensure_venv "requirements.txt"
+    fi
+    bridge_cmd=("$PY" "$ROOT/backend/bridge.py")
+  fi
   if [[ "$MODE" == "fake" ]]; then
-    ensure_venv "requirements.txt"
     log "本机假角度桥 ws://127.0.0.1:${WS_PORT}"
-    "$PY" "$ROOT/backend/bridge.py" --fake --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
+    "${bridge_cmd[@]}" --fake --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
   else
     log "本机真实合页桥 ws://127.0.0.1:${WS_PORT}（不在 Docker 里）"
-    "$PY" "$ROOT/backend/bridge.py" --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
+    "${bridge_cmd[@]}" --host 127.0.0.1 --port "$WS_PORT" --http-port "$HTTP_PORT" --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET" >"$RUN_DIR/bridge.log" 2>&1 &
   fi
   BRIDGE_PID=$!
 fi
@@ -590,6 +621,7 @@ fi
 
 write_session
 print_status
+maybe_open_browser
 log "Ctrl-C 停止。日志在 .run/ （已 gitignore）"
 while true; do
   if [[ -n "${WEB_PID:-}" ]] && ! kill -0 "$WEB_PID" 2>/dev/null; then

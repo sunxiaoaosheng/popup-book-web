@@ -1,5 +1,21 @@
 # 更新记录
 
+## v9 —— 打包与分发（2026-10-27）
+
+### 新增
+- **Homebrew formula**（`packaging/homebrew/`）。`popup-book` 执行 `./start.sh`，依赖 `python@3.12`。用 `--HEAD` 安装。不签名，不需要 Apple Developer 账号。cask 只是 `.example`，等 Mac 上的未签名 dmg 出现再启用。
+- **GitHub Release**。推送附注标签 `v*` 时，`.github/workflows/release.yml` 上传 `git archive` 源码包和 Linux 上 PyInstaller 打的桥。过程写在 `docs/RELEASE.md`。
+- **未签名 Mac 脚本**（`packaging/mac/`）。`build-app.sh` 在 macOS 上组装 `.app`；`build-dmg.sh` 用 `hdiutil`。Linux 上这两步打印原因后退出 0。Gatekeeper 的放行方式写在 `packaging/mac/README.md`。
+
+### 变更
+- `./start.sh` 仍是本机入口。设置 `POPUP_BRIDGE_BIN` 时，本机桥用这个可执行文件，不再建 `backend/.venv`。`POPUP_OPEN_BROWSER=1` 时，健康之后打开页面。两条都不设置时行为和以前一样。
+- 版本记为 **v9**。
+
+### 已知不足
+- 这台机器是 Linux，没有打出 `.dmg`，也没有在 Mac 上走过 Gatekeeper。formula 没有用 `brew install` 装过（若本机没有 Homebrew）。
+- 打包的桥不含 `pybooklid`。`--sensor` 仍用源码和本机的 hidapi。
+- Docker 镜像和真实合页这次没有跑。
+
 ## v8 —— 结构（2026-10-27）
 
 ### 新增

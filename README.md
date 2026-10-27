@@ -13,7 +13,7 @@
 
 卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
 
-**现在是 v8。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。
+**现在是 v9。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
 
 ## 一、文件
 
@@ -39,7 +39,11 @@
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
 | `start.sh` | 一条命令拉起静态页和桥。`./start.sh test` 跑检查 |
+| `packaging/popup-book` | 和 `./start.sh` 同一条命令，给 Homebrew 用 |
+| `packaging/homebrew/` | formula（源码安装）。cask 只是示例 |
+| `packaging/mac/` | 未签名的 `.app` / `.dmg` 脚本。Linux 上跳过映像 |
 | `docs/PROTOCOL.md` | 前后端角度流契约 |
+| `docs/RELEASE.md` | 附注标签 `v*` 怎么打出 GitHub Release |
 | `docs/ARCHITECTURE.md` | 模块图 |
 | `docs/ADAPTERS.md` | 角度适配器契约 |
 | `docker/` | 静态页和假桥的镜像。真实合页不进容器 |
@@ -137,6 +141,15 @@
 
 缺依赖会先问 `[y/n]`：`backend/.venv` 和 pip、macOS 上的 `brew install hidapi`、第一次构建镜像时拉取 `python:3.12-alpine`。`--yes` 才跳过询问。
 
+不想先克隆仓库、也还没有 Apple 开发者账号时，用 Homebrew formula（源码 + `python@3.12`，命令是 `popup-book`）：
+
+```bash
+brew install --HEAD --formula ./packaging/homebrew/Formula/popup-book.rb
+popup-book --fake --no-docker --yes
+```
+
+说明在 `packaging/homebrew/README.md`。发版在 `docs/RELEASE.md`。未签名 `.app` 会被 Gatekeeper 拦住，右键「打开」或到「系统设置 → 隐私与安全性」里放行，见 `packaging/mac/README.md`。这条路不签名、不公证、不上 App Store。改代码时仍用 `./start.sh`。
+
 Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`docker/Dockerfile.bridge`）。真实合页是 Mac 的 HID，容器里读不到，所以 `--sensor` 的桥永远在宿主机跑 `backend/bridge.py`。没有 Docker 时自动改用本机 `python3 -m http.server`，目录是 `frontend/`。
 
 **不要双击 `frontend/index.html`（file://）**。ES module 会被拦，页面是黑的。
@@ -214,6 +227,7 @@ curl -s http://127.0.0.1:8766/health
 - **影子扫过的观感和霞光颜色是在软件渲染下调的**，真 GPU 上阴影可能更锐利、颜色略有差异，可调 `frontend/js/sky-data.js` 里的 `SUN_ARC`、`DAWN_GLOW`、`DUSK_GLOW`。**真实合页上停 2 秒的手感和真 GPU 下窗内橘猫的观感都没测。**
 - 动画时间和 60fps 表现没在真 GPU 上测过；程序内置了一个自适应像素比，持续掉帧会自己降分辨率。
 - v8 的检查在 Linux 无头 Chrome 上跑过：`./start.sh test`（ESLint、`tsc --checkJs`、单元测试、一条冒烟）。冒烟仍覆盖假桥、换季、清晨伸懒腰、缝里的眼睛、直角爱心、一整天、轻轻合上、断线回滑块、重连上界。**Docker 镜像和真实 Mac 合页没有在这台机器上跑。** 画质和 draw call 的前后数字在 `PERFORMANCE.md`，测的是 SwiftShader。
+- v9 的打包在 Linux 上检查过脚本和 PyInstaller 桥。**没有在 macOS 上打 `.dmg`，也没有用 Homebrew 在 Mac 上安装。** Gatekeeper 的文案是按系统行为写的，没有在真机上点过。
 
 ## 七、测试
 

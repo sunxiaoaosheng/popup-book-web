@@ -1,0 +1,23 @@
+# 示例，不是能装的 cask。文件名以 .example 结尾，brew tap 不会加载它。
+# 在 Mac 上打出 PopupBook-unsigned.dmg、把 sha256 换成 dist/SHA256SUMS 里的值之后，
+# 复制成 Casks/popup-book.rb 再考虑 brew install --cask。
+# 全零的 sha256 是占位。现在装会失败，这是故意的。
+cask "popup-book" do
+  version "9"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  url "https://github.com/sunxiaoaosheng/popup-book-web/releases/download/v#{version}/PopupBook-unsigned.dmg"
+  name "林间小屋"
+  desc "Unsigned pop-up book. Gatekeeper will refuse this until you allow it."
+  homepage "https://github.com/sunxiaoaosheng/popup-book-web"
+
+  app "Popup Book.app"
+
+  caveats <<~EOS
+    这个 .app 没有签名，也没有公证，不上 App Store。
+    Gatekeeper 会说「无法验证开发者」或「已损坏」。
+    请在 Finder 里对 Popup Book.app 右键，选「打开」，再确认一次。
+    或到「系统设置 → 隐私与安全性」里点「仍要打开」。
+    合页传感器是本机 HID，需要主机权限，不能放进沙箱。
+    Apple Developer ID 以后再做。在那之前请用 Formula/popup-book.rb（源码 + python3）。
+  EOS
+end

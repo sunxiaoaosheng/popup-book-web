@@ -2,7 +2,8 @@
 import { clamp, lerp, sstep } from './math.js';
 import { CAPTIONS } from './state.js';
 import { SEASONS, SECRETS } from './story.js';
-import { closeKind } from './rules.js';
+import { emitAll } from './bus.js';
+import { stepClose } from './play-machine.js';
 import { groundY } from './build-critters.js';
 
 const caption = document.getElementById('caption');
@@ -89,13 +90,13 @@ export function stepAmbient(W, dt) {
 
   const moonP = F.moonP;
   for (const c of W.clouds) {
-    c.position.x = c.userData.x + Math.sin(T * c.userData.s + c.userData.ph) * 0.35;
-    c.userData.sc ??= c.scale.x;
-    c.userData.inCon ??= W.inConArea(c.userData.x + 0.35 * c.userData.sc, c.position.y);
-    const k = c.userData.inCon ? 1 - S.conP : 1;
-    c.scale.setScalar(Math.max(0.0001, c.userData.sc * k));
+    c.xNow = c.x + Math.sin(T * c.drift + c.ph) * 0.35;
+    if (c.inCon === undefined) c.inCon = W.inConArea(c.x + 0.35 * c.base, c.y);
+    const k = c.inCon ? 1 - S.conP : 1;
+    c.k = Math.max(0.0001, c.base * k);
     c.visible = k > 0.01;
   }
+  W.syncClouds();
   W.moon.visible = moonP > 0.002;
   W.moon.position.set(2.9, lerp(0.9, 4.75, moonP), 0);
 
@@ -154,45 +155,7 @@ export function stepAmbient(W, dt) {
 
   if (W.partSeason >= 0) stepParticles(W, dt, A);
 
-  const sp = S.sp;
-  if (A > 60) S.armed = true;
-  if (A < 65 && S.lastDir < 0 && A > 6 && S.armed) {
-    if (!S.closing) { S.closing = true; S.closeMax = 0; }
-    S.closeMax = Math.max(S.closeMax, sp);
-  }
-  if (A > 75) S.closing = false;
-  if (S.armed && A < 5 && S.closing) {
-    S.armed = false;
-    S.closing = false;
-    const kind = closeKind(S.closeMax);
-    const slam = kind === 'slam';
-    const gentle = kind === 'gentle';
-    const n = W.store.addCycle();
-    W.setSeason(n);
-    W.store.markSeason(S.season);
-    if (slam) {
-      W.sound.thud();
-      S.slamT = 1;
-      W.say('啪！吓了小猫一跳', 3);
-      S.endMode = 'slam';
-      W.ui.showEnding(null);
-    } else if (gentle) {
-      W.discover('goodnight');
-      W.sound.lullaby(S.season);
-      S.endMode = 'gentle';
-      const lines = SEASONS[(n - 1) % 4].night;
-      W.ui.showEnding({
-        title: '晚安',
-        line: lines[(n - 1) % lines.length],
-        next: `下一次翻开：${SEASONS[S.season].title}`,
-        cycles: n,
-      });
-    } else {
-      S.endMode = 'normal';
-      W.sound.tap();
-      W.ui.showEnding(null);
-    }
-  }
+  emitAll(W.bus, stepClose(S, { angle: A, speed: S.sp }));
   if (A > 9) W.ui.hideEnding();
   S.slamT = Math.max(0, S.slamT - dt * 0.8);
   W.book.position.y = S.slamT > 0 ? 0.04 * Math.sin(S.slamT * 40) * S.slamT : 0;

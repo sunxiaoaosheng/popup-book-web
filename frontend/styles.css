@@ -22,7 +22,10 @@
   button{background:#f2a24a;color:#2a1a0e;border:0;border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer}
   button.ghost{background:transparent;color:#f6ead2;border:1px solid rgba(255,255,255,.3)}
   #hint{position:fixed;right:12px;top:12px;font-size:12px;opacity:.55}
-  body.nohud #hud,body.nohud #caption,body.nohud #hint,body.nohud #tools,body.nohud #nudge{display:none}
+  body.nohud #hud,body.nohud #caption,body.nohud #hint,body.nohud #tools,body.nohud #nudge,body.nohud #perf{display:none}
+  #perf{position:fixed;left:12px;bottom:12px;z-index:8;font:12px/1.4 ui-monospace,monospace;color:#f6ead2;
+    background:rgba(20,14,10,.72);padding:4px 8px;border-radius:8px;pointer-events:none}
+  #perf[hidden]{display:none}
   /* ---- v2：工具栏 / 手账 / toast / 进度环 / 晚安 ---- */
   #tools{position:fixed;left:12px;top:12px;display:flex;gap:8px;z-index:5}
   #tools button.ghost{background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:13px}

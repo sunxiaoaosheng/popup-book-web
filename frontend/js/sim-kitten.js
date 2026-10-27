@@ -2,6 +2,9 @@
 import { clamp, lerp, sstep, smooth } from './math.js';
 import { TUNING } from './tuning.js';
 import { wantsDawnStretch } from './rules.js';
+import { emitAll } from './bus.js';
+import { stepKittenMode } from './kitten-machine.js';
+import { stepSeasonBeats } from './season-beats.js';
 
 export function stepKitten(W, dt) {
   const { S, frame: F, K, kitten } = W;
@@ -29,11 +32,13 @@ export function stepKitten(W, dt) {
   F.showK = showK;
   kitten.visible = showK;
   const seasonI = (W.SEASON.t < 0.5 ? W.SEASON.from : W.SEASON.to);
+  emitAll(W.bus, stepKittenMode(S, { showK, napVis, dawnVis, peekP }));
   let lx = 0, ly = 0, pounce = 0, lick = 0, shiver = 0;
+  let onSill = false;
   if (showK) {
     const sleepish = Math.max(sleepyP, napE);
     let px, py, pz, sxs, sys, rz = 0, ry = 0;
-    if (napVis) {
+    if (S.kittenMode === 'nap') {
       px = lerp(0.36, 0.4, napE);
       py = lerp(1.65, 2.5, napE);
       pz = lerp(-0.55, 0.12, napE);
@@ -41,7 +46,7 @@ export function stepKitten(W, dt) {
       rz = -0.5 * napE;
       K.head.rotation.x = 0;
       K.paws.visible = false;
-    } else if (dawnVis && peekP < 0.35) {
+    } else if (S.kittenMode === 'dawn') {
       const ph = (T * 0.32) % 1;
       S.dawnPhase = ph;
       const up = Math.sin(Math.PI * clamp((ph - 0.12) / 0.38, 0, 1));
@@ -80,8 +85,8 @@ export function stepKitten(W, dt) {
       if (S.shy > 0.01) { px -= 0.14 * S.shy * (1 - uc); py -= 0.1 * S.shy * (1 - uc); }
       py += S.startled * 0.2 * Math.abs(Math.sin(T * 14)) * uc;
       sys *= 1 + 0.06 * S.startled;
-      const onSill = uc > 0.98 ? 1 : 0;
-      if (onSill && S.chaseP < 0.01) {
+      onSill = uc > 0.98 && S.chaseP < 0.01;
+      if (onSill) {
         if (seasonI === 2) {
           S.leafT = (S.leafT || 0) + dt;
           const lu = (S.leafT % 7.5) / 7.5;
@@ -311,4 +316,7 @@ export function stepKitten(W, dt) {
       });
     }
   }
+  emitAll(W.bus, stepSeasonBeats(S.beats, {
+    dt, season: seasonI, onSill, angle: A, captionBusy: T < S.capUntil,
+  }));
 }

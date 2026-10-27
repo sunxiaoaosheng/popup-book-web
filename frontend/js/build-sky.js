@@ -140,29 +140,67 @@ export function buildSky(W) {
   const pineBands = [[1, 0.55, '#2f6a55', '#3b7b63'], [2, 0.7, '#245a49', '#2e6b57']];
   for (const [hi, step, dark, light] of pineBands) {
     const h = hillDefs[hi];
+    /** @type {{x:number, y:number, z:number, sz:number}[]} */
+    const spots = [];
     for (let x = -4.6; x < 4.7; x += step * (0.8 + rnd() * 0.5)) {
       const sz = 0.55 + rnd() * 0.45;
-      const t = makePine(0.5 * sz, 0.9 * sz, 3, dark, light, 0.04, 0.12, 0.04, false);
-      t.position.set(x, mapY(h, x) - 0.05, h.z + 0.05);
-      backFace.add(t);
+      spots.push({ x, y: mapY(h, x) - 0.05, z: h.z + 0.05, sz });
+    }
+    // 远山小松不参与铰链弹簧，也不投阴影。同一套几何用实例矩阵缩放，少几十次 draw。
+    const base = makePine(0.5, 0.9, 3, dark, light, 0.04, 0.12, 0.04, false);
+    const dummy = new THREE.Object3D();
+    for (const child of base.children) {
+      const mesh = new THREE.InstancedMesh(child.geometry, child.material, spots.length);
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      spots.forEach((sp, i) => {
+        dummy.position.set(sp.x, sp.y, sp.z);
+        dummy.scale.setScalar(sp.sz);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      backFace.add(mesh);
     }
   }
 
   const clouds = [];
   const cloudMat = paperGlow('#fff3e2');
+  const unitCloud = cut(ellipseShape(0, 0, 1, 1), '#fff3e2', 0, 0.03, false);
+  unitCloud.material[0] = cloudMat;
+  const puffLayout = [[0, 0, 0.32], [0.35, 0.08, 0.4], [0.75, 0, 0.3], [0.35, -0.1, 0.5]];
   for (const [x, y, s] of [[-2.8, 4.6, 1], [1.6, 5.3, 0.8], [3.6, 3.9, 0.7]]) {
-    const g = new THREE.Group();
-    for (const [dx, dy, r] of [[0, 0, 0.32], [0.35, 0.08, 0.4], [0.75, 0, 0.3], [0.35, -0.1, 0.5]]) {
-      const cm = cut(ellipseShape(dx, dy - 0.05, r * 1.2, r * 0.7), '#fff3e2', 0, 0.03, false);
-      cm.material[0] = cloudMat;
-      g.add(cm);
-    }
-    g.position.set(x, y, 0.08);
-    g.scale.setScalar(s);
-    g.userData = { x, s: 0.3 + rnd() * 0.3, ph: rnd() * 6 };
-    backFace.add(g);
-    clouds.push(g);
+    const puffs = puffLayout.map(([dx, dy, r]) => ({ dx, dy: dy - 0.05, rx: r * 1.2, ry: r * 0.7 }));
+    clouds.push({
+      x, y, base: s, drift: 0.3 + rnd() * 0.3, ph: rnd() * 6,
+      k: s, xNow: x, visible: true, inCon: undefined, puffs,
+    });
   }
+  const cloudMesh = new THREE.InstancedMesh(unitCloud.geometry, unitCloud.material, clouds.length * puffLayout.length);
+  cloudMesh.castShadow = false;
+  cloudMesh.receiveShadow = true;
+  cloudMesh.frustumCulled = false;
+  backFace.add(cloudMesh);
+  const cloudM = new THREE.Matrix4();
+  const cloudP = new THREE.Vector3();
+  const cloudQ = new THREE.Quaternion();
+  const cloudS = new THREE.Vector3();
+  W.syncClouds = () => {
+    let i = 0;
+    for (const c of clouds) {
+      const ck = c.visible ? c.k : 0;
+      for (const puff of c.puffs) {
+        cloudP.set(c.xNow + puff.dx * ck, c.y + puff.dy * ck, 0.08);
+        cloudS.set(puff.rx * ck, puff.ry * ck, ck || 0.0001);
+        cloudM.compose(cloudP, cloudQ, cloudS);
+        cloudMesh.setMatrixAt(i, cloudM);
+        i += 1;
+      }
+    }
+    cloudMesh.instanceMatrix.needsUpdate = true;
+  };
+  W.syncClouds();
 
   const moon = buildMoon(backFace);
   const stars = buildStars(backFace);

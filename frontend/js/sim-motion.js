@@ -1,7 +1,9 @@
 // 开合手感、摇晃/猛开、停住彩蛋、一整天。不碰网格。
 import { clamp, smooth, sstep } from './math.js';
 import { TUNING } from './tuning.js';
-import { holdBand, holdDuration, heartTarget, isStartleOpen, noteShake, stepFullday } from './rules.js';
+import { heartTarget } from './rules.js';
+import { emitAll } from './bus.js';
+import { stepHolds, stepShake, stepStartle } from './play-machine.js';
 
 export function stepMotion(W, dt) {
   const { S, frame: F } = W;
@@ -23,26 +25,9 @@ export function stepMotion(W, dt) {
   if (S.yawnT < 99) S.yawnT += dt;
   const sp = S.sp;
 
-  if (noteShake(S.sw, S.filtered, T, S.lastShake)) {
-    S.lastShake = T;
-    S.shakeN++;
-    W.shakeBurst();
-    W.sound.shake(S.season);
-    W.say(['哗啦——花瓣全抖落下来了', '哗啦——叶子和柳絮漫天都是', '哗啦——一场叶子雨', '哗啦——树上的雪全抖下来了'][S.season], 3.2);
-    W.discover('shake');
-  }
+  emitAll(W.bus, stepShake(S, { angle: A, time: T }));
   S.burstT = Math.max(0, S.burstT - dt);
-
-  S.flutCool -= dt;
-  if (S.lastDir > 0 && isStartleOpen(sp, A) && S.flutCool <= 0) {
-    S.flutCool = 3;
-    S.flutT = 1.3;
-    S.startled = 1;
-    for (const t of W.trees) t.sw.v += (Math.random() - 0.5) * 4;
-    if (A > 46) W.startleOwl(true);
-    else S.owlPend = 1.4;
-    W.say('纸张被你翻得哗啦啦直抖', 2.2);
-  }
+  emitAll(W.bus, stepStartle(S, { dt, angle: A, speed: sp }));
   if (S.owlPend > 0) {
     S.owlPend -= dt;
     if (A > 46 && W.owl.visible && W.startleOwl(true)) S.owlPend = 0;
@@ -65,58 +50,16 @@ export function stepMotion(W, dt) {
   F.peekP = S.peek.step(sstep(76, 90, A) * (1 - 0.55 * S.duck), dt);
   F.hopP = S.hop.step(sstep(91 + 10 * S.shy, 100 + 12 * S.shy, A), dt);
   F.eggP = S.egg.step(heartTarget(A), dt);
-  if (F.eggP > 0.9 && S.lastDir !== 0) S.eggT += dt;
-  else S.eggT = 0;
-  if (S.eggT > 0.5) W.discover('heart');
   const kittenAwake = A > 76;
   const sleepWant = (S.lastDir < 0 && kittenAwake && F.eggP < 0.2 && T - S.lastShake > 3) ? 1 : 0;
   F.sleepyP = S.sleepy.step(sleepWant, dt);
 
-  {
-    const H = S.hold;
-    if (Math.abs(A - H.anchor) > TUNING.holdTol) {
-      H.anchor = A;
-      H.t = 0;
-      H.fired = false;
-    } else H.t += dt;
-    H.band = holdBand(H.anchor, F.cabinP, F.peekP);
-    const holdNeed = holdDuration(H.band);
-    const ring = H.band && !H.fired && H.t > 0.7 ? clamp((H.t - 0.7) / Math.max(0.4, holdNeed - 0.7), 0, 1) : -1;
-    W.ui.setRing(ring);
-    if (H.band && !H.fired && H.t >= holdNeed) {
-      H.fired = true;
-      if (H.band === 'dawn') {
-        S.dawnHeld = true;
-        if (!S.dawnSaid && !(W.SEASON.t < 1 && W.SEASON.from !== W.SEASON.to)) {
-          S.dawnSaid = true;
-          W.say('清晨 · 窗边伸了个懒腰', 3.5);
-          W.sound.mew();
-        }
-      } else {
-        S.act[H.band] = true;
-        if (H.band === 'seam') { W.discover('seam'); W.sound.mew(); W.say('缝里有一双眼睛，在偷看你…', 4); }
-        if (H.band === 'nap') { W.discover('nap'); W.say('小猫趁你不动，爬上屋顶靠着烟囱睡着了 · Zzz', 5); W.sound.purr(true); S.purring = true; }
-        if (H.band === 'chase') { W.discover('chase'); W.say('小猫跳下窗台，追着萤火虫跑！', 5); W.sound.meow(1.2, 0.4, 0.35); }
-      }
-    }
-    if (S.act.seam && !(A > 2.5 && A < 18)) S.act.seam = false;
-    if (S.act.nap && !(A > 47 && A < 76)) {
-      S.act.nap = false;
-      if (S.purring && !S.petDown) { W.sound.purr(false); S.purring = false; }
-    }
-    if (S.act.chase && !(A > 96 && A < 131)) S.act.chase = false;
-  }
-
-  {
-    const ev = stepFullday(S.run, A, S.sp, T);
-    if (ev === 'arm') {
-      S.sunsetSaid = false; S.sneezeSaid = false; S.dawnSaid = false; S.dawnHeld = false;
-    } else if (ev === 'discover') {
-      const first = W.discover('fullday');
-      S.conBurst = 1;
-      W.say(first ? '你陪小猫慢慢过完了一整天——天上多了一只猫' : '又是完整的一天 · 猫座在等你', 5);
-    } else if (ev === 'fast') W.say('这一天…过得有点快', 2.6);
-    if (S.conBurst > 0) S.conBurst = Math.max(0, S.conBurst - dt / 6);
-    if (S.napLock > 0) S.napLock -= dt;
-  }
+  emitAll(W.bus, stepHolds(S, {
+    dt, time: T, angle: A, speed: S.sp,
+    cabinP: F.cabinP, peekP: F.peekP, eggP: F.eggP,
+    seasonMorphing: W.SEASON.t < 1 && W.SEASON.from !== W.SEASON.to,
+  }));
+  W.ui.setRing(S.holdRing);
+  if (S.conBurst > 0) S.conBurst = Math.max(0, S.conBurst - dt / 6);
+  if (S.napLock > 0) S.napLock -= dt;
 }

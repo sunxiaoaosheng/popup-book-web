@@ -1,9 +1,9 @@
 // 盖页、日晷光线、台阶与树、小屋外壳。小猫的姿势在下一步。
 import * as THREE from '../vendor/three.module.js';
 import { clamp, lerp, sstep } from './math.js';
-import { SEASONS } from './story.js';
-import { TUNING } from './tuning.js';
-import { morphProgress, timeOfDay as timeOfDayName } from './rules.js';
+import { timeOfDay as timeOfDayName } from './rules.js';
+import { emitAll } from './bus.js';
+import { stepSeason } from './season-machine.js';
 import { SKY } from './season.js';
 import { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './build-sky.js';
 
@@ -71,17 +71,7 @@ export function stepStage(W, dt) {
   }
 
   const SEASON = W.SEASON;
-  if (SEASON.t < 1 && A >= TUNING.seasonMorphLo) {
-    const p = morphProgress(A);
-    if (p > SEASON.t) {
-      SEASON.t = p;
-      W.applySeasonVisuals();
-    }
-    if (!S.seasonMorphSaid && SEASON.from !== SEASON.to) {
-      S.seasonMorphSaid = true;
-      W.say(`${SEASONS[SEASON.from].name} → ${SEASONS[SEASON.to].name} · 换季了`, 4.2);
-    }
-  }
+  emitAll(W.bus, stepSeason(SEASON, S, A));
 
   const SK = SKY[SEASON.to];
   const SF = SKY[SEASON.from];

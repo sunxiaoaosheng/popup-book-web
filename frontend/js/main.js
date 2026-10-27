@@ -6,6 +6,9 @@ import { initUI } from './ui.js';
 import { S } from './state.js';
 import { createWorld } from './world.js';
 import { bindActions } from './actions.js';
+import { wirePlay } from './play-wire.js';
+import { createPerfPanel } from './perf-panel.js';
+import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
 import { step } from './sim.js';
 import { attachDebug } from './debug.js';
@@ -21,6 +24,8 @@ W.sound = sound;
 W.store = store;
 W.ui = ui;
 bindActions(W);
+wirePlay(W);
+const perfPanel = createPerfPanel();
 
 const input = createInput(W);
 W.input = input;
@@ -46,8 +51,9 @@ let last = performance.now();
 function frame(now) {
   const raw = (now - last) / 1000;
   last = now;
-  if (document.hidden) {
+  if (!shouldRender(document.hidden)) {
     input.tick(0);
+    perfPanel.paused();
     requestAnimationFrame(frame);
     return;
   }
@@ -59,15 +65,25 @@ function frame(now) {
   input.maybeHud(dt);
   perf.acc += raw;
   perf.n += 1;
-  if (perf.acc > 2) {
-    if (perf.n > 20 && perf.acc / perf.n > 0.028 && perf.pr > 1) {
-      perf.pr = Math.max(1, Math.round((perf.pr - 0.25) * 100) / 100);
+  if (perf.acc > QUALITY_WINDOW_S) {
+    const avg = perf.n > 20 ? perf.acc / perf.n : 0;
+    const pr = nextPixelRatio(perf.pr, avg);
+    if (pr !== perf.pr) {
+      perf.pr = pr;
       W.gfx.renderer.setPixelRatio(perf.pr);
       W.gfx.resize();
     }
+    const shadow = nextShadowSize(perf.shadowSize, perf.pr, avg);
+    if (shadow !== perf.shadowSize) W.gfx.setShadowSize(shadow);
     perf.acc = 0;
     perf.n = 0;
   }
+  perfPanel.sample(dt, {
+    frameMs: raw * 1000,
+    calls: W.gfx.renderer.info.render.calls,
+    pr: perf.pr,
+    shadow: perf.shadowSize,
+  });
   requestAnimationFrame(frame);
 }
 

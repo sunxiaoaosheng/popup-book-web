@@ -1,5 +1,6 @@
 // 渲染器、相机、灯光。阴影默认不每帧重绘，由主循环按运动状态申请。
 import * as THREE from '../vendor/three.module.js';
+import { initialPixelRatio } from './quality.js';
 
 export function createGfx(stageEl) {
   const params = new URLSearchParams(location.search);
@@ -9,7 +10,7 @@ export function createGfx(stageEl) {
     preserveDrawingBuffer: params.get('pdb') === '1',
     powerPreference: 'high-performance',
   });
-  const dprCap = Math.min(window.devicePixelRatio || 1, 1.75);
+  const dprCap = initialPixelRatio(window.devicePixelRatio || 1);
   renderer.setPixelRatio(dprCap);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -43,7 +44,17 @@ export function createGfx(stageEl) {
   const windowLight = new THREE.PointLight('#ffc36b', 0, 6, 1.5);
   scene.add(windowLight);
 
-  const perf = { acc: 0, n: 0, pr: renderer.getPixelRatio(), shadowAcc: 0, shadowReady: false };
+  const perf = { acc: 0, n: 0, pr: renderer.getPixelRatio(), shadowSize: 2048, shadowAcc: 0, shadowReady: false };
+
+  function setShadowSize(size) {
+    perf.shadowSize = size;
+    sun.shadow.mapSize.set(size, size);
+    if (sun.shadow.map) {
+      sun.shadow.map.dispose();
+      sun.shadow.map = null;
+    }
+    forceShadow();
+  }
 
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -71,6 +82,6 @@ export function createGfx(stageEl) {
   }
 
   return {
-    renderer, scene, camera, hemi, sun, seamLight, windowLight, perf, resize, requestShadow, forceShadow,
+    renderer, scene, camera, hemi, sun, seamLight, windowLight, perf, resize, requestShadow, forceShadow, setShadowSize,
   };
 }

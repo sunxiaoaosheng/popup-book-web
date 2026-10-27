@@ -8,6 +8,7 @@ import { buildForest } from './build-forest.js';
 import { buildCabin } from './build-cabin.js';
 import { buildCritters } from './build-critters.js';
 import { SKY, createSeason } from './season.js';
+import { createBus } from './bus.js';
 
 export function createWorld(stageEl) {
   const gfx = createGfx(stageEl);
@@ -36,6 +37,7 @@ export function createWorld(stageEl) {
       c3: new THREE.Color(),
     },
     net: { connects: 0, coalesced: 0, dropped: 0, link: 'down' },
+    bus: createBus(),
   };
   buildGround(W);
   buildSky(W);

@@ -1,5 +1,23 @@
 # 更新记录
 
+## v8 —— 结构（2026-10-27）
+
+### 新增
+- **状态机 + 事件总线**。摇晃、猛开、停住、一整天、合盖在 `play-machine.js`；小猫姿势在 `kitten-machine.js`（`hidden` / `nap` / `dawn` / `play`）；换季进度在 `season-machine.js`。副作用走 `bus.js`，订阅在 `play-wire.js`。单元测试在 `tests/unit/machines.test.js`。
+- **角度适配器**。`FakeSource`、`PyBookLidSource`、`ReplaySource`（`--replay trace.jsonl`）。`bridge.py` 只负责选择；广播和 `/health` 拆到 `broadcast.py`、`health.py`。契约见 `docs/ADAPTERS.md`。协议仍是 v1。
+- **画质**。`quality.js`：隐藏标签页不画；像素比按帧时间往下降；已经降到 1 仍慢时阴影贴图从 2048 降到 1024。`P` 或 `?perf=1` 打开性能面板。
+- 远山小松、云朵改为 `InstancedMesh`。飘落粒子本来就是实例。会折起的近景树保持独立网格。
+- 春：窗台停够约 2 秒，一句「春 · 一只蝴蝶在窗台前停了一下」。冬：第一次上窗台，一句「冬 · 小猫把脖子缩进围巾里」。都不是第 9 个秘密，手账仍是 8。
+- MIT `LICENSE`、`CONTRIBUTING.md`、issue / PR 模板。结构图在 `docs/ARCHITECTURE.md`。
+
+### 变更
+- 版本记为 **v8**。README 开头就是 `./start.sh`。
+
+### 已知不足
+- 近景树没有实例化：每棵树有自己的弹簧，猫头鹰停在其中一棵上，点击也要打到那一棵。
+- 远山小松用同一套几何做缩放，树干相对树冠会比原来略细一点。只影响盖页里的远山。
+- Docker 镜像和真实合页这次没有跑。回放和假角度在 Linux 上测过。
+
 ## v7 —— 地基（2026-10-27）
 
 ### 新增

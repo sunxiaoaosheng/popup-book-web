@@ -88,7 +88,7 @@
 |---|---|
 | `ok` | 进程能回答。固定 `true`。 |
 | `v` | 协议版本。 |
-| `mode` | `"fake"` 或 `"sensor"`。 |
+| `mode` | `"fake"`、`"sensor"` 或 `"replay"`。 |
 | `clients` | 当前 WebSocket 客户端数。 |
 | `lastAngle` | 最近一次广播的角度；还没有则为 `null`。 |
 | `lastAngleAgeMs` | 距那次角度的毫秒。心跳不刷新它。还没有角度则为 `null`。 |

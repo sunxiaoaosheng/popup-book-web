@@ -3,9 +3,17 @@
 合上笔记本盖子 = 合上这本书；慢慢打开屏幕，一本纸艺立体书就在屏幕里展开：松林、小木屋、亮灯的窗、一只橘猫，最后是月亮、星星和萤火虫。
 网页只关心一个输入：**合页角度 `angle`（0–130°）**。没有传感器时用滑块也能完整体验。
 
-克隆之后在仓库根目录执行 `./start.sh`（说明见第三节，`./start.sh --help`）。卡顿和假死的原因写在 `PERFORMANCE.md`。角度流的字段写在 `docs/PROTOCOL.md`。
+## 先跑起来
 
-**现在是 v7。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v7 不改画面，改的是契约和检查：手感数字在 `frontend/js/tuning.js`，角度帧带版本号，`./start.sh test` 跑 lint、类型检查和测试。
+```bash
+./start.sh
+```
+
+浏览器打开脚本打印的地址。没有 Docker 就加 `--no-docker`。检查用 `./start.sh test`。细节在第三节，`--help` 看全部开关。
+
+卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
+
+**现在是 v8。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。
 
 ## 一、文件
 
@@ -18,17 +26,22 @@
 | `frontend/js/story.js` | 数据：小秘密的名字/提示、四季设定与晚安台词 |
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
+| `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
 | `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
-| `backend/bridge.py` | 读角度，按协议 v1 广播。`--fake` 是假数据 |
+| `backend/bridge.py` | 选择适配器。`--fake` / `--replay` / 真实合页 |
+| `backend/broadcast.py` `backend/health.py` | 协议 v1 广播和 `GET /health` |
+| `backend/sensors/` | 角度适配器。契约在 `docs/ADAPTERS.md` |
 | `backend/protocol.py` | 角度帧、心跳、`/health` 的字段 |
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
 | `start.sh` | 一条命令拉起静态页和桥。`./start.sh test` 跑检查 |
 | `docs/PROTOCOL.md` | 前后端角度流契约 |
+| `docs/ARCHITECTURE.md` | 模块图 |
+| `docs/ADAPTERS.md` | 角度适配器契约 |
 | `docker/` | 静态页和假桥的镜像。真实合页不进容器 |
 | `PERFORMANCE.md` | 假死和掉帧的原因，以及改了什么 |
 | `tests/unit/` | 协议、玩法判定、存档、桥的健康检查 |
@@ -87,6 +100,14 @@
 - 完整地开合一次之后，季节还是会往前走——但**下次慢慢打开**时，你会看见树色、天空、窗台上的小道具和小猫的行头一起变过去（春的花瓣换成夏的西瓜，再往后是落叶、初雪）。
 - 开得越慢，过渡看得越清楚；一下子开过那一段，也会一次变完。变的时候屏幕下方会说一句「春 → 夏 · 换季了」（每换一次说一遍）。这不是新的小秘密，手账还是 8 条。
 - 清晨窗后伸懒腰、正午打喷嚏、黄昏看日落、夜里看月亮都还在。参数在 `frontend/js/tuning.js` 的 `TUNING`（`seasonMorphLo` / `seasonMorphHi`）。
+
+## 二·十、v8：状态机，以及春冬的两句反应（不剧透版）
+
+- 小猫这一拍处于哪一种姿势、秘密什么时候算触发、换季进度走到哪，都由状态机决定，再经事件总线通知声音和字幕。手账仍是 8 条。
+- 春天在窗台多停一会儿，会有一句关于蝴蝶的话。冬天第一次站到窗台上，会有一句关于围巾的话。都不是新的小秘密。
+- 远山的小松和云改成了实例绘制。折叠的近景树仍是各自的弹簧，因为猫头鹰停在其中一棵上，点树也要点到那一棵。
+- `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
+- 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
 
 ## 三、运行
 
@@ -192,7 +213,7 @@ curl -s http://127.0.0.1:8766/health
 - 手感阈值（慢<16°/s、猛>85°/s、晃动判定、合盖快慢）是按"滑块模拟"和对真实开盖速度的估计定的，**没有用真传感器数据校过**，觉得太灵敏/太迟钝就改 `frontend/js/tuning.js` 里的 `TUNING`。
 - **影子扫过的观感和霞光颜色是在软件渲染下调的**，真 GPU 上阴影可能更锐利、颜色略有差异，可调 `frontend/js/sky-data.js` 里的 `SUN_ARC`、`DAWN_GLOW`、`DUSK_GLOW`。**真实合页上停 2 秒的手感和真 GPU 下窗内橘猫的观感都没测。**
 - 动画时间和 60fps 表现没在真 GPU 上测过；程序内置了一个自适应像素比，持续掉帧会自己降分辨率。
-- v7 的检查在 Linux 无头 Chrome 上跑过：`./start.sh test`（ESLint、`tsc --checkJs`、16 个 node 测试、4 个 Python 测试、一条 15 项冒烟）。冒烟覆盖假桥带动角度、换季、清晨伸懒腰、缝里的眼睛、直角爱心、一整天、轻轻合上、断线回滑块、重连次数有上界。**Docker 镜像和真实 Mac 合页没有在这台机器上跑。**
+- v8 的检查在 Linux 无头 Chrome 上跑过：`./start.sh test`（ESLint、`tsc --checkJs`、单元测试、一条冒烟）。冒烟仍覆盖假桥、换季、清晨伸懒腰、缝里的眼睛、直角爱心、一整天、轻轻合上、断线回滑块、重连上界。**Docker 镜像和真实 Mac 合页没有在这台机器上跑。** 画质和 draw call 的前后数字在 `PERFORMANCE.md`，测的是 SwiftShader。
 
 ## 七、测试
 

@@ -40,3 +40,25 @@ export const TUNING = {
   seasonMorphLo: 22,
   seasonMorphHi: 65,
 };
+
+/**
+ * 分享卡。只有按下「分享」或 C 才会读这些数。
+ * 主循环不读像素，也不为它保留绘图缓冲。
+ * clipSec 只在打开「短片」或 `?shareclip=1` 时用，会被夹到 3–5 秒。默认分享不录。
+ */
+export const SHARE = {
+  cardW: 1280,
+  cardH: 960,
+  margin: 56,
+  footer: 168,
+  borderAmp: 8,
+  photoAmp: 3.5,
+  borderSteps: 16,
+  labelPx: 28,
+  captionPx: 34,
+  captionMinPx: 20,
+  footPx: 22,
+  speckCount: 18,
+  clipSec: 4,
+  clipFps: 12,
+};

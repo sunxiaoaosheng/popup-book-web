@@ -16,6 +16,7 @@ export const STALE_MS = 1500;
  * @property {number|null} seq
  * @property {number|null} t 桥进程内的单调毫秒
  * @property {boolean} legacy
+ * @property {string} mode 桥的模式；旧帧为空串
  */
 
 /**
@@ -38,13 +39,14 @@ export function parseAngleMessage(raw) {
   const declared = typeof obj.type === 'string' ? obj.type : '';
   const angleOk = typeof obj.angle === 'number' && Number.isFinite(obj.angle);
   const legacy = obj.v == null && obj.seq == null && obj.t == null && obj.type == null;
+  const mode = typeof obj.mode === 'string' ? obj.mode : '';
 
   if (declared === 'heartbeat') {
-    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false };
+    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode };
   }
   if (declared === 'angle' || (declared === '' && angleOk) || (declared !== '' && declared !== 'angle' && angleOk)) {
     if (!angleOk) return null;
-    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy };
+    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode };
   }
   return null;
 }

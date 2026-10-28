@@ -5,6 +5,7 @@ import { SEASONS, SECRETS } from './story.js';
 import { emitAll } from './bus.js';
 import { stepClose } from './play-machine.js';
 import { groundY } from './build-critters.js';
+import { stepSeasonSweep } from './season-sweep.js';
 
 const caption = document.getElementById('caption');
 let lastCap = '';
@@ -154,6 +155,7 @@ export function stepAmbient(W, dt) {
   }
 
   if (W.partSeason >= 0) stepParticles(W, dt, A);
+  stepSeasonSweep(W);
 
   emitAll(W.bus, stepClose(S, { angle: A, speed: S.sp }));
   if (A > 9) W.ui.hideEnding();

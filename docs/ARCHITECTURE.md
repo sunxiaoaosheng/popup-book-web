@@ -28,6 +28,8 @@ flowchart LR
 | `frontend/js/kitten-machine.js` | 小猫这一拍是 `hidden` / `nap` / `dawn` / `play` |
 | `frontend/js/season-machine.js` | 打开过程中的换季进度 |
 | `frontend/js/season-beats.js` | 春、冬的两句季节反应，不是秘密 |
+| `frontend/js/season-ritual.js` `sky-bands.js` | 换季锋面曲线、每季动机、天空时段权重。不引用 Three |
+| `frontend/js/season-sweep.js` `sky-gradient.js` `season-light.js` `season-motif.js` | 扫场粒子、天空渐变、光色、现场合成的短动机 |
 | `frontend/js/bus.js` | 同步事件总线 |
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |

@@ -155,7 +155,24 @@ export function pickWebmMime(isTypeSupported) {
 }
 
 /**
- * 支持录制时给一段 3–5 秒的 WebM。调用方传入 seconds 时允许更短（冒烟用），上限仍是 5。
+ * 短片默认不录。`explicit === true` 或界面已经打开时才录；`false` 一律跳过。
+ * @param {boolean|undefined} explicit
+ * @param {boolean} armed
+ */
+export function clipEnabled(explicit, armed) {
+  if (explicit === true) return true;
+  if (explicit === false) return false;
+  return !!armed;
+}
+
+/** `?shareclip=1` 才在进页面时打开短片。别的值，包括 `0` 和空，都保持关掉。 */
+export function clipArmedFromQuery(value) {
+  return value === '1';
+}
+
+/**
+ * 支持录制、而且调用方确实要短片时，给一段 3–5 秒的 WebM。
+ * 传入 seconds 时允许更短（冒烟用），上限仍是 5。
  * @param {boolean} supported
  * @param {typeof SHARE} [tune]
  * @param {number} [seconds]

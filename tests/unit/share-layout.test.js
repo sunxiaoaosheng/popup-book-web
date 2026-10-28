@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  captionFontPx, cardLayout, clipPlan, composeShare, coverCrop, handBorder,
+  captionFontPx, cardLayout, clipArmedFromQuery, clipEnabled, clipPlan, composeShare, coverCrop, handBorder,
   kittenCaption, paperSpecks, pickWebmMime, seasonStamp, secretsLine, shareFileBase,
 } from '../../frontend/js/share-layout.js';
 import { SHARE } from '../../frontend/js/tuning.js';
@@ -125,6 +125,16 @@ test('composeShare packs an autumn dusk card', () => {
   assert.equal(card.border.length, SHARE.borderSteps * 4);
   assert.equal(card.specks.length, SHARE.speckCount);
   assert.equal(card.fonts.label, SHARE.labelPx);
+});
+
+test('clip stays off unless the page or the caller asks for it', () => {
+  assert.equal(clipArmedFromQuery('1'), true);
+  assert.equal(clipArmedFromQuery('0'), false);
+  assert.equal(clipArmedFromQuery(null), false);
+  assert.equal(clipEnabled(undefined, false), false);
+  assert.equal(clipEnabled(undefined, true), true);
+  assert.equal(clipEnabled(false, true), false);
+  assert.equal(clipEnabled(true, false), true);
 });
 
 test('clip plan falls back to png, and the button length stays inside 3–5s', () => {

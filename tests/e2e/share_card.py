@@ -1,4 +1,4 @@
-"""分享卡冒烟：无头 Chrome 里出 PNG，支持时再出一段 WebM。
+"""分享卡冒烟：无头 Chrome 里默认只出 PNG。短片要显式打开。
 
 静态页要已经在 POPUP_BASE。不启动桥，角度用滑块钩子。
 """
@@ -65,12 +65,15 @@ def main():
         b = p.chromium.launch(**launch)
         pg = b.new_page(viewport={"width": 1280, "height": 800})
         pg.on("pageerror", lambda e: errs.append("PAGEERROR " + str(e)))
-        pg.goto(f"{BASE}?nostore=1&hud=1&shareclip=0&ws=ws://127.0.0.1:9")
+        pg.goto(f"{BASE}?nostore=1&hud=1&ws=ws://127.0.0.1:9")
         pg.wait_for_function("window.__popup", timeout=30000)
         pg.evaluate("__popup.forceSeason(2); __popup.setAngle(88); __popup.settle(1.6)")
         pg.screenshot(path=os.path.join(OUT, "ui-autumn.png"), timeout=15000)
         check("分享按钮", pg.inner_text("#share") == "分享", pg.inner_text("#share"))
+        check("短片默认关", pg.get_attribute("#shareclip", "aria-pressed") == "false", pg.inner_text("#shareclip"))
         check("提示里有 C", "C 分享" in pg.inner_text("#hint"), pg.inner_text("#hint"))
+        downloads = []
+        pg.on("download", lambda item: downloads.append(item.suggested_filename or ""))
 
         card = pg.evaluate(
             """() => window.__popup.shareCard({
@@ -104,7 +107,11 @@ def main():
             pg.keyboard.press("c")
         key_dl = key_info.value
         check("C 键也下载 png", (key_dl.suggested_filename or "").endswith(".png"), key_dl.suggested_filename)
-        pg.wait_for_function("() => !window.__popup.shareBusy()", timeout=5000)
+        pg.wait_for_function("() => !window.__popup.shareBusy()", timeout=8000)
+        pg.wait_for_timeout(400)
+        webms = [name for name in downloads if name.endswith(".webm")]
+        pngs = [name for name in downloads if name.endswith(".png")]
+        check("默认不下载 webm", webms == [] and len(pngs) >= 2, str(downloads))
         pg.close()
 
         winter = b.new_page(viewport={"width": 1280, "height": 800})
@@ -120,12 +127,20 @@ def main():
         raw_w, im_w = save_card(clip["png"]["b64"], "card-winter.png")
         check("冬夜卡片", clip.get("ok") is True and clip.get("label", "").startswith("冬"), clip.get("label"))
         check("冬夜照片不是空白", max(spread(im_w, clip["photo"])) > 25 and raw_w.startswith(PNG), clip.get("caption"))
-        webm = clip.get("webm") or {}
+        check("默认分享没有短片", clip.get("clip") == "png" and not clip.get("webm"), clip.get("clip"))
+        winter.click("#shareclip")
+        check("短片开关可以打开", winter.get_attribute("#shareclip", "aria-pressed") == "true")
+        opt = winter.evaluate(
+            """() => window.__popup.shareCard({
+              download: false, copy: false, toast: false, embed: false, seconds: 1
+            })"""
+        )
+        webm = opt.get("webm") or {}
         head = bytes(webm.get("head") or [])
-        if clip.get("clip") == "webm":
-            check("短片是 webm", head.startswith(WEBM) and webm.get("size", 0) > 100, f"size={webm.get('size')} head={head[:4].hex()}")
+        if opt.get("clip") == "webm":
+            check("打开短片后能录 webm", head.startswith(WEBM) and webm.get("size", 0) > 100, f"size={webm.get('size')} head={head[:4].hex()}")
         else:
-            check("没有短片时仍有 png", clip.get("clip") == "png" and raw_w.startswith(PNG), clip.get("clip"))
+            check("短片录不了时仍是 png", opt.get("ok") is True and opt.get("clip") == "png", opt.get("clip"))
         winter.close()
         b.close()
 

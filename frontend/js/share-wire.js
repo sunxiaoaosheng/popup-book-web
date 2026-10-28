@@ -5,7 +5,7 @@
 import { SECRETS, SEASONS } from './story.js';
 import { SHARE } from './tuning.js';
 import { S } from './state.js';
-import { clipPlan, composeShare } from './share-layout.js';
+import { clipArmedFromQuery, clipEnabled, clipPlan, composeShare } from './share-layout.js';
 import { paintPhoto, paintShareCard } from './share-draw.js';
 import {
   canvasBlob, copyPng, downloadBlob, mediaRecorderMime, readGlCanvas, startRecorder, summarizeBlob,
@@ -17,12 +17,27 @@ export function attachShare(W) {
   btn.id = 'share';
   btn.type = 'button';
   btn.className = 'ghost';
-  btn.title = '分享今天的小屋（C）';
+  btn.title = '分享今天的小屋（C），保存一张图片';
   btn.textContent = '分享';
   const tools = document.getElementById('tools');
   if (tools) tools.appendChild(btn);
 
-  const clipOff = new URLSearchParams(location.search).get('shareclip') === '0';
+  let clipOn = clipArmedFromQuery(new URLSearchParams(location.search).get('shareclip'));
+  const clipBtn = document.createElement('button');
+  clipBtn.id = 'shareclip';
+  clipBtn.type = 'button';
+  clipBtn.className = 'ghost';
+  clipBtn.title = '打开后，分享会多录约 4 秒短片';
+  const paintClip = () => {
+    clipBtn.textContent = clipOn ? '短片开' : '短片';
+    clipBtn.setAttribute('aria-pressed', clipOn ? 'true' : 'false');
+  };
+  paintClip();
+  clipBtn.addEventListener('click', () => {
+    clipOn = !clipOn;
+    paintClip();
+  });
+  if (tools) tools.appendChild(clipBtn);
   const api = {
     /** @type {null | ((dt: number) => void)} */
     sink: null,
@@ -159,8 +174,7 @@ export function attachShare(W) {
       if (download) downloadBlob(blob, `${spec.fileBase}.png`);
       const copied = opts.copy === false ? false : await copyPng(blob);
       const png = await summarizeBlob(blob, opts.embed === true);
-      const allowClip = opts.clip === true || (opts.clip !== false && !clipOff);
-      const mime = allowClip ? mediaRecorderMime() : '';
+      const mime = clipEnabled(opts.clip, clipOn) ? mediaRecorderMime() : '';
       const plan = clipPlan(!!mime, SHARE, opts.seconds);
       /** @type {any} */
       const payload = {

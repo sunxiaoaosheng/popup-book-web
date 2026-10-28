@@ -141,6 +141,9 @@ test('a hard move wakes without the gentle line, and wake hold blocks another na
   M.greeted = true;
   for (let i = 0; i < 3 * 60; i++) stepKittenMood(M, play(), tuning);
   assert.equal(M.asleep, true);
+  const early = stepKittenMood(M, play({ angle: 92.4, speed: 40 }), tuning);
+  assert.equal(M.asleep, true);
+  assert.equal(early.some((e) => e.type === 'kitten-wake'), false);
   const rough = stepKittenMood(M, play({ angle: 110, speed: 40 }), tuning);
   assert.equal(M.asleep, false);
   assert.equal(rough.some((e) => e.type === 'kitten-wake'), false);

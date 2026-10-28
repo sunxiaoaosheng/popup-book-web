@@ -172,8 +172,10 @@ export function stepKittenMood(M, input, tuning = TUNING.kitten) {
     const ad = Math.abs(delta);
     if (ad >= tuning.jitterFloor) M.jitter += ad;
     else M.jitter *= Math.exp(-dt / tuning.jitterDecay);
+    // 猛开的头几帧速度很高，但累积角度还小：先攒着。
+    // 停在 1°–8° 里才算轻轻叫醒；一下子超过 8° 就只睁眼，不说那句。
     const gentle = M.jitter >= tuning.wakeJitterDeg && M.jitter <= tuning.wakeJitterMax && speed <= tuning.wakeSpeed;
-    const rough = speed > tuning.wakeSpeed || M.jitter > tuning.wakeJitterMax;
+    const rough = M.jitter > tuning.wakeJitterMax;
     if (gentle || rough) {
       M.asleep = false;
       M.jitter = 0;

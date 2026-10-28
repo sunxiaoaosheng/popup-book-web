@@ -34,8 +34,7 @@ def spread(im, photo):
         int(photo["y"] + photo["h"]) - 8,
     )
     crop = im.crop(box).resize((48, 48)).convert("RGB")
-    chans = list(zip(*crop.getdata()))
-    return [max(c) - min(c) for c in chans]
+    return [hi - lo for lo, hi in crop.getextrema()]
 
 
 def ink_hits(im, x, y, width):

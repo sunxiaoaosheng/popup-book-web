@@ -24,6 +24,16 @@ test('blank save and first secret', () => {
   assert.equal(store.seasonSeen(1), true);
   store.setMuted(true);
   assert.equal(dump().muted, true);
+  assert.equal(store.feel, 'normal');
+  store.setFeel('low');
+  assert.equal(dump().feel, 'low');
+  assert.equal(store.muted, true);
+  store.setFeel('nope');
+  assert.equal(store.feel, 'normal');
+  store.setFeel('off');
+  store.reset();
+  assert.equal(store.feel, 'normal');
+  assert.equal(store.muted, false);
   assert.deepEqual(blankSave().secrets, {});
 });
 
@@ -32,8 +42,18 @@ test('loads an existing save and reset clears it', () => {
   assert.equal(store.cycles, 3);
   assert.equal(store.hasSecret('nap'), true);
   assert.equal(store.muted, true);
+  assert.equal(store.feel, 'normal');
   store.reset();
   assert.equal(store.cycles, 0);
   assert.equal(store.hasSecret('nap'), false);
   assert.equal(store.muted, false);
+  assert.equal(store.feel, 'normal');
+});
+
+test('a saved feel level comes back, and an unknown one falls back to normal', () => {
+  const kept = memoryStore({ feel: 'off', muted: false });
+  assert.equal(kept.store.feel, 'off');
+  assert.equal(kept.store.muted, false);
+  const junk = memoryStore({ feel: 'max' });
+  assert.equal(junk.store.feel, 'normal');
 });

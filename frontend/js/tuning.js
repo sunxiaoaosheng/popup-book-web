@@ -40,3 +40,55 @@ export const TUNING = {
   seasonMorphLo: 22,
   seasonMorphHi: 65,
 };
+
+/**
+ * 合页动手感。声音和镜头只读这些数字，映射在 hinge-feel.js。
+ * 角度是度，速度是度/秒，增益是接到主音量之前的线性幅度。
+ */
+export const HINGE_FEEL = {
+  /** off / low / normal 的总倍率。off 时镜头和拟音都是 0。 */
+  levels: { off: 0, low: 0.42, normal: 1 },
+  /** 低于此时不出嘎吱和纸声。盖住停住时的角度抖动。 */
+  speedDead: 5,
+  /** 角速度到此时，嘎吱、纸声和镜头到达满幅。 */
+  speedFull: 150,
+  /** 嘎吱中心频率沿开合行程从低走到高。 */
+  travel: 130,
+  creakHzLo: 190,
+  creakHzHi: 640,
+  creakQ: 7.2,
+  creakGain: 0.2,
+  /** 嘎吱音高的缓慢起伏，比例。 */
+  creakWobble: 0.07,
+  /** 方向反转且两边都够快时，短促的铰链咔哒。 */
+  clickAbove: 32,
+  clickCooldown: 0.09,
+  clickGain: 0.16,
+  clickHz: 1680,
+  /** 纸声在立页的角度带里更满，合上和完全打开时收一点。 */
+  rustleLo: 12,
+  rustleRise: 36,
+  rustleFall: 88,
+  rustleHi: 120,
+  rustle: [
+    { hz: 820, q: 0.7, gain: 0.12 },
+    { hz: 2300, q: 0.9, gain: 0.14 },
+    { hz: 5600, q: 1.2, gain: 0.075 },
+  ],
+  /** 直角、开尽、合上各一下。同一落点在冷却内不连发。 */
+  thunkCooldown: 0.42,
+  thunkGain: 0.26,
+  /** 慢慢经过也有一声轻的，猛地经过顶到 thunkGain。 */
+  thunkFloor: 0.38,
+  thunkSpeedFull: 110,
+  right: { angle: 90, hz0: 172, hz1: 68, dur: 0.15 },
+  open: { angle: 128, hz0: 104, hz1: 42, dur: 0.2 },
+  closed: { angle: 2.2, hz0: 88, hz1: 36, dur: 0.22 },
+  /** 镜头平滑时间常数。晃动频率压在 2Hz 以下，避免晕。 */
+  camTau: 0.1,
+  shakeCap: 0.055,
+  shakeHz: 1.15,
+  parallaxCap: 0.16,
+  fovCap: 0.85,
+  breatheHz: 0.32,
+};

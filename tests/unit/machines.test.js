@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createBus, emitAll } from '../../frontend/js/bus.js';
 import { resolveKittenMode, stepKittenMode } from '../../frontend/js/kitten-machine.js';
 import { stepClose, stepHolds, stepShake, stepStartle } from '../../frontend/js/play-machine.js';
+import { noteHiddenClose } from '../../frontend/js/rules.js';
 import { stepSeasonBeats } from '../../frontend/js/season-beats.js';
 import { stepSeason } from '../../frontend/js/season-machine.js';
 import { TUNING } from '../../frontend/js/tuning.js';
@@ -118,6 +119,33 @@ test('fullday discover and a fast open both come through the machine', () => {
     if (hit) phase = hit.phase;
   }
   assert.equal(phase, 'fast');
+});
+
+test('a lid shut while the page is hidden still advances the close once', () => {
+  const S = book();
+  S.armed = true;
+  S.filtered = 90;
+  S.prevFiltered = 90;
+  let track = { t: null, a: null, max: 0 };
+  track = noteHiddenClose(S, track, 70, 1000);
+  track = noteHiddenClose(S, track, 20, 1500);
+  track = noteHiddenClose(S, track, 1, 2000);
+  assert.equal(track.a, 1);
+  assert.equal(S.lidShut, true);
+  const ev = stepClose(S, { angle: 40, speed: 0 });
+  assert.equal(ev.length, 1);
+  assert.equal(ev[0].type, 'close');
+  assert.equal(ev[0].kind, 'normal');
+  assert.ok(S.filtered < TUNING.seasonMorphLo);
+  assert.equal(stepClose(S, { angle: 4, speed: 0 }).length, 0);
+  assert.equal(S.lidShut, false);
+});
+
+test('shut sample before the book was opened does not count', () => {
+  const S = book();
+  noteHiddenClose(S, { t: null, a: null, max: 0 }, 0, 0);
+  assert.equal(!!S.lidShut, false);
+  assert.equal(stepClose(S, { angle: 12, speed: 0 }).length, 0);
 });
 
 test('gentle close is gentle, a slam is a slam', () => {

@@ -2,8 +2,6 @@
 import { clamp, lerp, sstep } from './math.js';
 import { CAPTIONS } from './state.js';
 import { SEASONS, SECRETS } from './story.js';
-import { emitAll } from './bus.js';
-import { stepClose } from './play-machine.js';
 import { groundY } from './build-critters.js';
 import { stepSeasonSweep } from './season-sweep.js';
 
@@ -157,7 +155,6 @@ export function stepAmbient(W, dt) {
   if (W.partSeason >= 0) stepParticles(W, dt, A);
   stepSeasonSweep(W);
 
-  emitAll(W.bus, stepClose(S, { angle: A, speed: S.sp }));
   if (A > 9) W.ui.hideEnding();
   S.slamT = Math.max(0, S.slamT - dt * 0.8);
   W.book.position.y = S.slamT > 0 ? 0.04 * Math.sin(S.slamT * 40) * S.slamT : 0;

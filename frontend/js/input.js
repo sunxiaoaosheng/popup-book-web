@@ -3,6 +3,8 @@ import * as THREE from '../vendor/three.module.js';
 import { MAX_ANGLE } from './state.js';
 import { parseAngleMessage, createSeqGate, linkState } from './protocol.js';
 import { autoLabel, autoPressed, controlSource } from './control.js';
+import { noteHiddenClose } from './rules.js';
+import { TUNING } from './tuning.js';
 
 export function createInput(W) {
   const { S } = W;
@@ -33,6 +35,17 @@ export function createInput(W) {
   let srcCache = '';
   let angleCache = '';
   let hudT = 0;
+  /** @type {{t:number|null, a:number|null, max:number}} */
+  let hiddenTrack = { t: null, a: null, max: 0 };
+
+  function rememberHiddenAngle(raw) {
+    let frame;
+    try { frame = parseAngleMessage(raw); } catch { return; }
+    if (!frame || frame.type !== 'angle' || frame.angle == null) return;
+    const angle = /** @type {number} */ (frame.angle);
+    hiddenTrack = noteHiddenClose(S, hiddenTrack, angle, performance.now(), TUNING);
+    setAngle(angle);
+  }
 
   function setAngle(a) {
     S.target = Math.min(MAX_ANGLE, Math.max(0, +a || 0));
@@ -69,6 +82,8 @@ export function createInput(W) {
       if (latest !== null && seq !== seen) W.net.coalesced += 1;
       latest = ev.data;
       seq += 1;
+      // 合严后标签页隐藏，rAF 不再把中间角度排空。低于 closeBelow 的样本在这里记下。
+      if (document.hidden) rememberHiddenAngle(ev.data);
     };
     // error 之后一定会 close。只在 close 里重连，避免两条路径把连接数翻倍。
     sock.onerror = () => { try { sock.close(); } catch { /* onclose 负责重连 */ } };
@@ -156,6 +171,7 @@ export function createInput(W) {
   bindPointer(W);
 
   function tick(dt) {
+    if (!document.hidden) hiddenTrack = { t: null, a: null, max: 0 };
     drain();
     noteLink();
     if (driver() === 'auto') {

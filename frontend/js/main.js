@@ -53,6 +53,8 @@ function frame(now) {
   last = now;
   if (!shouldRender(document.hidden)) {
     input.tick(0);
+    // 屏幕被盖住时通常不再画。若这一拍仍然被调用，把已经记下的合严结算掉。
+    if (S.lidShut) step(W, Math.min(0.05, Math.max(0, raw)));
     perfPanel.paused();
     requestAnimationFrame(frame);
     return;

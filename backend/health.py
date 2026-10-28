@@ -1,11 +1,13 @@
 """GET /health。和 WebSocket 分开，避免绑在某一版 websockets 的握手钩子上。"""
 
 import json
+import socket
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from netbind import loopback_hosts
 from protocol import health_body
 
 
@@ -39,6 +41,22 @@ class Status:
             return health_body(self.mode, self.clients, self.last_angle, age, self.seq, self.hz)
 
 
+def _health_server(host, port, handler):
+    class Server(ThreadingHTTPServer):
+        allow_reuse_address = True
+        address_family = socket.AF_INET6 if ":" in host else socket.AF_INET
+        daemon_threads = True
+
+        def server_bind(self):
+            if self.address_family == socket.AF_INET6:
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            super().server_bind()
+
+    httpd = Server((host, port), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd
+
+
 def serve_health(host, port, status):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -58,10 +76,19 @@ def serve_health(host, port, status):
         def log_message(self, fmt, *args):
             return
 
-    try:
-        httpd = ThreadingHTTPServer((host, port), Handler)
-    except OSError as e:
-        print(f"[bridge] 健康检查端口 {port} 不可用：{e}", file=sys.stderr)
-        return None
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd
+    servers = []
+    hosts = loopback_hosts(host)
+    for one in hosts:
+        try:
+            servers.append(_health_server(one, port, Handler))
+        except OSError as e:
+            print(f"[bridge] 健康检查端口 {one}:{port} 不可用：{e}", file=sys.stderr)
+            for started in servers:
+                started.shutdown()
+            return None
+    shown = ", ".join(
+        f"http://[{one}]:{port}/health" if ":" in one else f"http://{one}:{port}/health"
+        for one in hosts
+    )
+    print(f"[bridge] 健康检查 {shown}")
+    return servers[0]

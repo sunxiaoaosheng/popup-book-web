@@ -116,6 +116,21 @@
 - `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
 - 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
 
+## 季节仪式（花瓣 / 蝉雾 / 落叶 / 雪锋）
+
+合上再慢慢打开时，换季不再只是树色在变。大约 22°–65°，一道粒子从书页一侧扫到另一侧，扫完就收掉：
+
+- 进入春天：花瓣
+- 进入夏天：萤火虫，再加一层薄蝉雾
+- 进入秋天：叶子打着旋
+- 进入冬天：一道雪锋
+
+同一段里会响一句现场合成的短动机（春往上走、夏有蝉鸣的颤音、秋往下落、冬是稀疏的高音）。没有音频文件。先点一下页面或左上角 🔊 才会出声。
+
+把盖子合严时屏幕会灭、页面暂停绘制。合到约 5° 以下仍会计上这一次（季节 +1）。再慢慢打开，就能看见上面的扫场。
+
+天空按季节和时刻拉开：清晨、正午、黄昏、夜里的天顶、天边和光色都不一样。晨昏时天边再亮一档。树、道具、行头仍是原来的材质插值，换季不重建几何。手感数字在 `frontend/js/tuning.js` 的 `ritualBand` / `ritualParticles` / `ritualHaze` / `ritualMotifVol` / `ritualTwilight`。这不是新的小秘密，手账还是 8 条。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -136,7 +151,7 @@
 
 后台启动不会问 `[y/n]`，缺的 Python 依赖会直接装。`.app` 里的启动器设了 `POPUP_FOREGROUND=1`，那个进程留在前台，方便系统把它当成正在运行的应用；另开终端仍可以用仓库里的 `./start.sh stop`（pid 写在包内的 `logs/`）。
 
-默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:8000>）。左下圆点变绿，滑块被禁用，书跟着 0→130→0 开合。
+默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:19081/?ws=ws://127.0.0.1:19876>），一次即可，不用连刷。脚本会等静态页和桥都开始听（本机有 IPv6 时包括 `::1`）才打印这行。左下圆点变绿，按钮是「■ 停止演示」，书跟着 0→130→0 开合。再点一次按钮，扫角停住，滑块可以拖。`./start.sh --sensor` 不会打开这段演示，合页角度直接驱动书。
 
 同一模式再执行一次：服务还健康的话只打印地址，不会占第二个端口。
 
@@ -148,7 +163,7 @@
 ./start.sh --no-docker              # 本机 python，不建容器
 ./start.sh --docker                 # 必须用 Docker
 ./start.sh --restart                # 停掉上次的进程/容器再启动
-./start.sh --port 8123 --ws-port 8765
+./start.sh --port 8123 --ws-port 19876
 ./start.sh --sensor --smooth 0.5 --offset -3
 ./start.sh stop
 ./start.sh test --yes              # ESLint、tsc、单元测试、无头冒烟
@@ -201,16 +216,16 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 
-桥连上且角度在 1.5 秒内到达时，左下圆点是绿的，滑块禁用。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次，不会越连越多。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`。
+桥连上且角度在 1.5 秒内到达时，左下圆点是绿的。假角度桥这时按钮是「■ 停止演示」，滑块禁用；再点一次改为滑块。实机合页（`--sensor`）按钮保持「▶ 自动演示」，角度跟盖子走，滑块禁用。只有再点按钮才会暂时改成本地扫角，点「停止」后回到合页。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次；握手卡住超过 1.5 秒会主动关掉再连，不会越连越多，也不必靠刷新。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`（默认 19877）。
 
 ### 仍想手动启动
 
 ```bash
-python3 -m http.server 8000 --directory frontend
+python3 backend/static_server.py --port 19081 --directory frontend --bind loopback
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 backend/.venv/bin/python backend/bridge.py --fake
-curl -s http://127.0.0.1:8766/health
+curl -s http://127.0.0.1:19877/health
 ```
 
 真实传感器改用 `backend/requirements-sensor.txt`，macOS 上先 `brew install hidapi`，然后去掉 `--fake`。
@@ -224,8 +239,8 @@ curl -s http://127.0.0.1:8766/health
 | `--offset` | 0 | 角度偏移（校准用，度） |
 | `--smooth` | 0 | 低通平滑 0–0.95，数值越大越稳越慢 |
 | `--clamp` | 180 | 角度上限（网页自己会再限制到 130） |
-| `--host` / `--port` | localhost / 8765 | WebSocket 监听地址 |
-| `--http-port` | 8766 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
+| `--host` / `--port` | localhost / 19876 | WebSocket 监听地址。`localhost`、`127.0.0.1`、`::1` 会同时绑 IPv4 和 IPv6 环回 |
+| `--http-port` | 19877 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
 
 ## 四、排查问题
 

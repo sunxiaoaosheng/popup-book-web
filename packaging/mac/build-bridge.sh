@@ -29,6 +29,7 @@ python3 -m venv "$VENV"
   --hidden-import sensors.lid \
   --hidden-import sensors.replay \
   --hidden-import sensors.base \
+  --hidden-import netbind \
   --distpath "$DIST" \
   --workpath "$WORK" \
   --specpath "$WORK" \

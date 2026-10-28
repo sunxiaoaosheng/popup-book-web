@@ -31,7 +31,7 @@ export const S = {
   sw: { dir: 0, ext: 0, swings: [] },
   hold: { anchor: 0, t: 0, band: '', fired: false },
   act: { seam: false, nap: false, chase: false },
-  armed: false, closing: false, closeMax: 0, ending: 0, slamT: 0,
+  armed: false, closing: false, closeMax: 0, lidShut: false, ending: 0, slamT: 0,
   eggT: 0, lookX: 0, lookY: 0, mouseT: -99, mouseX: 0, mouseY: 0, hover: '', nudgeT: 0,
   run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 },
   conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,

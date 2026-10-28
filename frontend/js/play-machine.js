@@ -89,13 +89,34 @@ export function stepHolds(S, input) {
 
 /** @param {any} S @param {{angle:number, speed:number}} input */
 export function stepClose(S, { angle, speed }) {
+  // 合严发生在页面看不见的时候：角度样本已经记在 lidShut 上。
+  // 先于「现在的角度」结算，并把过滤角拉回合盖线以下，
+  // 这样同帧的换季进度不会一下子跳过 22°–65°。
+  if (S.lidShut && S.armed) {
+    S.lidShut = false;
+    S.armed = false;
+    S.closing = false;
+    const kind = closeKind(S.closeMax);
+    if (S.filtered > TUNING.closeBelow) {
+      S.filtered = Math.max(0, TUNING.closeBelow - 1);
+      S.prevFiltered = S.filtered;
+      S.vel = 0;
+      S.lastDir = -1;
+      if (S.hinge) {
+        S.hinge.x = S.filtered;
+        S.hinge.v = 0;
+      }
+    }
+    return [{ type: 'close', kind }];
+  }
+  if (!S.armed) S.lidShut = false;
   if (angle > 60) S.armed = true;
   if (angle < 65 && S.lastDir < 0 && angle > 6 && S.armed) {
     if (!S.closing) { S.closing = true; S.closeMax = 0; }
     S.closeMax = Math.max(S.closeMax, speed);
   }
   if (angle > 75) S.closing = false;
-  if (S.armed && angle < 5 && S.closing) {
+  if (S.armed && angle < TUNING.closeBelow && S.closing) {
     S.armed = false;
     S.closing = false;
     return [{ type: 'close', kind: closeKind(S.closeMax) }];

@@ -7,6 +7,7 @@ import { S } from './state.js';
 import { createWorld } from './world.js';
 import { bindActions } from './actions.js';
 import { wirePlay } from './play-wire.js';
+import { wireKitten } from './kitten-wire.js';
 import { createPerfPanel } from './perf-panel.js';
 import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
@@ -25,6 +26,7 @@ W.store = store;
 W.ui = ui;
 bindActions(W);
 wirePlay(W);
+wireKitten(W);
 const perfPanel = createPerfPanel();
 
 const input = createInput(W);

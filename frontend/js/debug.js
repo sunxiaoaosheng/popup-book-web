@@ -113,6 +113,8 @@ export function attachDebug(W, input) {
         dawnStretch: +S.dawnW.toFixed(2), dawnPose: +(S.dawnStretch || 0).toFixed(2),
         dawnHeld: !!S.dawnHeld, dawnSaid: !!S.dawnSaid, period: S.tod,
         kittenMode: S.kittenMode,
+        mood: S.kittenMood.mood, moodAct: S.kittenMood.act, asleep: !!S.kittenMood.asleep,
+        moodCap: S.moodCap || '', greet: S.kittenMood.greetKind || '',
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,

@@ -28,6 +28,7 @@
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
+| `frontend/js/kitten-memory.js` `kitten-mood.js` `kitten-lines.js` | 小猫的记性、心情、闲置小动作。纯逻辑，单测在 `tests/unit/kitten-mood.test.js`。画面在 `kitten-look.js`，存档订阅在 `kitten-wire.js` |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
@@ -115,6 +116,13 @@
 - 远山的小松和云改成了实例绘制。折叠的近景树仍是各自的弹簧，因为猫头鹰停在其中一棵上，点树也要点到那一棵。
 - `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
 - 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
+
+## 二·十一、小猫会记得你（不剧透版）
+
+- 记性写在原来的浏览器存档里。第一次见面、隔了几个小时、换了一天再打开，它打招呼的话不一样。刚刷新页面不会反复寒暄。
+- 心情会变：在它出来玩的角度停很久，它会打盹，把盖子轻轻抖大约 1° 就醒；四十五分钟里打开够三次，它会兴奋；二十分钟内被猛地合上过，它会害羞。手账仍是 8 条，秘密的触发角度没有改。
+- 醒着时眨眼、歪头、舔爪子会换着来，不会按同一个圈循环。偶尔冒出一句很短的话。这些话让路给秘密和换季字幕。落点没改，仍在门洞里和台阶之间的平地上。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.kitten`。
 
 ## 三、运行
 

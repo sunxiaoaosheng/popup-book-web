@@ -39,4 +39,53 @@ export const TUNING = {
   /** 开着时换季：开盖进度把 SEASON.t 从 0 推到 1 的角度区间。 */
   seasonMorphLo: 22,
   seasonMorphHi: 65,
+
+  /**
+   * 小猫的记性和心情。墙钟用毫秒，书里的时间用秒，角度用度。
+   * 判定在 kitten-memory.js / kitten-mood.js，不改落点。
+   */
+  kitten: {
+    /** 短于此时再见面，不另打招呼（刷新、刚合上又打开）。 */
+    soonGapMs: 45 * 1000,
+    /** 同一天离开超过此时，说「隔了好久」。日历换了一天则说「新的一天」。 */
+    hoursGapMs: 3 * 60 * 60 * 1000,
+    /** 这段时间内打开次数达到 oftenCount，心情变兴奋。 */
+    oftenWindowMs: 45 * 60 * 1000,
+    oftenCount: 3,
+    /** 被猛地合上之后，害羞持续这么久。 */
+    shyAfterSlamMs: 20 * 60 * 1000,
+    /** 两次打开隔得比这更近，只算一次。 */
+    reopenGapMs: 8 * 1000,
+    /** 存档里留下最近多少次打开。 */
+    visitKeep: 8,
+    /** 开着的时候，隔这么多秒把「最后见面」写进存档。 */
+    seenEvery: 60,
+    /** 低于此时算合上，再开过 openAbove 记一次打开。 */
+    shutBelow: 12,
+    openAbove: 72,
+    /** 小猫在玩的姿势里几乎不动这么久，就打盹。 */
+    idleSleepSec: 16,
+    /** 低于这个角速度（度/秒）算停着。 */
+    idleSpeed: 2.4,
+    /** 睡着时，角度在一小段里抖过这么多度就轻轻醒来。再大就是普通的开合。 */
+    wakeJitterDeg: 1,
+    wakeJitterMax: 8,
+    wakeSpeed: 28,
+    /** 单帧角度变化小于此时，当成传感器噪声，不累加。 */
+    jitterFloor: 0.02,
+    /** 噪声累积的衰减时间常数（秒）。 */
+    jitterDecay: 1.4,
+    /** 醒来后至少醒着这么久，才肯再睡。 */
+    wakeHoldSec: 8,
+    /** 醒来那一下耳朵竖着的时间。 */
+    wakeFlash: 1.15,
+    /** 两句闲话之间至少隔这么久。 */
+    lineGapSec: 14,
+    /** 一个小动作结束时，说一句的概率。 */
+    lineChance: 0.38,
+    idleMin: 1.5,
+    idleMax: 3.2,
+    idleGapMin: 0.7,
+    idleGapMax: 2.4,
+  },
 };

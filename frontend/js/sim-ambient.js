@@ -177,8 +177,10 @@ export function stepAmbient(W, dt) {
   if (A > 70 && !S.act.nap && !S.act.chase && S.shy < 0.5 && F.cabinE > 0.9) {
     ct = ct + `  ·  ${SEASONS[W.SEASON.t < 0.5 ? W.SEASON.from : W.SEASON.to].blurb}`;
   }
-  if (S.tod && !(T < S.capUntil)) ct = `${S.tod} · ${ct}`;
-  if (T < S.capUntil) ct = S.cap;
+  const storyOn = T < S.capUntil;
+  if (S.tod && !storyOn) ct = `${S.tod} · ${ct}`;
+  if (storyOn) ct = S.cap;
+  else if (S.moodCap && T < S.moodUntil) ct = S.moodCap;
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
   S.nudgeT += dt;
   if (S.nudgeT > 45 && A > 3 && W.store.foundCount() < SECRETS.length) {

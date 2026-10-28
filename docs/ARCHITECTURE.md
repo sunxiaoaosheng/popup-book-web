@@ -26,6 +26,8 @@ flowchart LR
 |---|---|
 | `frontend/js/play-machine.js` | 摇晃、猛开、停住、一整天、合盖。改 `S` 上的字段，发出事件 |
 | `frontend/js/kitten-machine.js` | 小猫这一拍是 `hidden` / `nap` / `dawn` / `play` |
+| `frontend/js/kitten-mood.js` | 记性带来的心情、打盹和叫醒、不循环的闲置动作。状态在 `S.kittenMood` |
+| `frontend/js/kitten-look.js` | 把心情画在眼睛和耳朵上，不改根节点位置 |
 | `frontend/js/season-machine.js` | 打开过程中的换季进度 |
 | `frontend/js/season-beats.js` | 春、冬的两句季节反应，不是秘密 |
 | `frontend/js/bus.js` | 同步事件总线 |

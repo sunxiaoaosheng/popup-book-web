@@ -1,6 +1,8 @@
 FROM python:3.12-alpine
 # 只提供 frontend/ 静态文件。网页根就是这本书，所以 index.html 在 /。
+# 静态服务放在 /opt，避免被当成网页文件发出去。
 WORKDIR /srv
 COPY frontend/ /srv/
-EXPOSE 8000
-CMD ["python3", "-m", "http.server", "8000", "--bind", "0.0.0.0", "--directory", "/srv"]
+COPY backend/static_server.py backend/netbind.py /opt/
+EXPOSE 19081
+CMD ["python3", "/opt/static_server.py", "--port", "19081", "--bind", "all", "--directory", "/srv"]

@@ -9,9 +9,10 @@ MODE="fake"
 YES=0
 DOCKER_MODE="auto"
 RESTART=0
-PORT=8000
-WS_PORT=8765
-HTTP_PORT=""
+PORT="${POPUP_PORT:-19081}"
+WS_PORT="${POPUP_WS_PORT:-19876}"
+HTTP_PORT="${POPUP_HTTP_PORT:-}"
+CHECK_V6=0
 HZ=45
 SMOOTH=0
 OFFSET=0
@@ -43,15 +44,17 @@ usage() {
   --no-docker  用本机 python 提供静态页和假桥
   --docker     静态页（以及假桥）必须用 Docker；Docker 不可用就退出
   --restart    先停掉本脚本上次拉起的进程/容器，再启动
-  --port N     静态页端口，默认 8000
-  --ws-port N  角度桥端口，默认 8765
-  --http-port N  桥的 HTTP 健康检查端口，默认是 ws 端口 + 1
+  --port N     静态页端口，默认 19081（也可用环境变量 POPUP_PORT）
+  --ws-port N  角度桥端口，默认 19876（POPUP_WS_PORT）
+  --http-port N  桥的 HTTP 健康检查端口，默认是 ws 端口 + 1（POPUP_HTTP_PORT）
   --hz N       桥的广播频率，默认 45
   --smooth N   桥的低通系数 0~0.95，默认 0
   --offset N   角度偏移（度），默认 0
   -h, --help   显示本说明
 
 环境变量:
+  POPUP_PORT / POPUP_WS_PORT / POPUP_HTTP_PORT
+                    覆盖上面的默认端口。命令行 --port / --ws-port / --http-port 优先。
   POPUP_BRIDGE_BIN      可执行的桥。设置后本机桥用它，不再创建 backend/.venv。
   POPUP_OPEN_BROWSER=1  健康之后打开静态页（macOS 用 open，Linux 用 xdg-open）。
 
@@ -100,39 +103,79 @@ have_docker() {
   command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
 }
 
-port_busy() {
-  python3 - "$1" <<'PY'
+ipv6_loopback() {
+  python3 - <<'PY'
 import socket, sys
-s = socket.socket()
-s.settimeout(0.4)
 try:
-    code = s.connect_ex(("127.0.0.1", int(sys.argv[1])))
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    s.bind(("::1", 0))
+except OSError:
+    sys.exit(1)
 finally:
-    s.close()
-sys.exit(0 if code == 0 else 1)
+    try:
+        s.close()
+    except Exception:
+        pass
 PY
 }
 
-web_ok() {
-  local body
-  body="$(curl -fsS --max-time 2 "http://127.0.0.1:${1}/index.html" 2>/dev/null || true)"
+port_busy() {
+  python3 - "$1" <<'PY'
+import socket, sys
+port = int(sys.argv[1])
+hosts = ["127.0.0.1"]
+try:
+    probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    try:
+        probe.bind(("::1", 0))
+        hosts.append("::1")
+    except OSError:
+        pass
+    finally:
+        probe.close()
+except OSError:
+    pass
+for host in hosts:
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    s = socket.socket(family, socket.SOCK_STREAM)
+    s.settimeout(0.4)
+    try:
+        if s.connect_ex((host, port)) == 0:
+            sys.exit(0)
+    finally:
+        s.close()
+sys.exit(1)
+PY
+}
+
+web_ok_host() {
+  local host="$1" port="$2" url body
+  if [[ "$host" == "::1" ]]; then
+    url="http://[::1]:${port}/index.html"
+  else
+    url="http://${host}:${port}/index.html"
+  fi
+  body="$(curl -g -fsS --max-time 2 "$url" 2>/dev/null || true)"
   [[ "$body" == *"./js/main.js"* ]]
 }
 
+web_ok() { web_ok_host "127.0.0.1" "$1"; }
+
 # 握手成功返回 0。$2 为 angle 时再读一帧 JSON。
 ws_probe() {
-  local port="$1" want="${2:-handshake}"
-  python3 - "$port" "$want" <<'PY'
+  local port="$1" want="${2:-handshake}" host="${3:-127.0.0.1}"
+  python3 - "$port" "$want" "$host" <<'PY'
 import socket, sys
-port, want = int(sys.argv[1]), sys.argv[2]
+port, want, host = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 try:
-    s = socket.create_connection(("127.0.0.1", port), 2)
+    s = socket.create_connection((host, port), 2)
 except OSError:
     sys.exit(1)
 s.settimeout(2)
 key = "dGhlIHNhbXBsZSBub25jZQ=="
+host_header = f"[{host}]" if ":" in host else host
 req = (
-    f"GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
+    f"GET / HTTP/1.1\r\nHost: {host_header}:{port}\r\n"
     "Upgrade: websocket\r\nConnection: Upgrade\r\n"
     f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
 )
@@ -255,24 +298,36 @@ stop_saved() {
   sleep 0.4
 }
 
+page_url() {
+  if [[ "$MODE" == "slider" ]]; then
+    printf 'http://127.0.0.1:%s/' "$PORT"
+  else
+    printf 'http://127.0.0.1:%s/?ws=ws://127.0.0.1:%s' "$PORT" "$WS_PORT"
+  fi
+}
+
 print_status() {
-  ok "静态页   http://127.0.0.1:${PORT}/"
+  ok "静态页   $(page_url)"
   if [[ "$MODE" == "slider" ]]; then
     ok "模式     滑块。没有启动角度桥，拖页面底部滑块即可"
   elif [[ "$MODE" == "fake" ]]; then
     ok "角度桥   ws://127.0.0.1:${WS_PORT}   （假数据 0→130→0）"
     ok "健康检查 http://127.0.0.1:${HTTP_PORT}/health"
-    ok "绿灯路径 打开上面的地址，左下圆点变绿，滑块禁用，书跟着动"
+    ok "绿灯路径 打开上面的地址即可，不必刷新。按钮是「■ 停止演示」，书跟着 0→130→0。再点一次交给滑块"
   else
     ok "角度桥   ws://127.0.0.1:${WS_PORT}   （宿主机上的真实合页）"
     ok "健康检查 http://127.0.0.1:${HTTP_PORT}/health"
-    ok "说明     MacBook HID 不进 Docker。桥在本机，静态页可以在容器里"
+    ok "说明     实机合页直接驱动书，不会自动打开演示。MacBook HID 不进 Docker"
+  fi
+  if [[ "$CHECK_V6" == 1 ]]; then
+    ok "localhost http://localhost:${PORT}/  同样可用（::1 和 127.0.0.1 都在听）"
   fi
 }
 
 maybe_open_browser() {
   [[ "${POPUP_OPEN_BROWSER:-}" == "1" ]] || return 0
-  local url="http://127.0.0.1:${PORT}/"
+  local url
+  url="$(page_url)"
   if command -v open >/dev/null 2>&1; then
     open "$url" >/dev/null 2>&1 || true
   elif command -v xdg-open >/dev/null 2>&1; then
@@ -282,13 +337,22 @@ maybe_open_browser() {
   fi
 }
 
+endpoints_ready() {
+  web_ok "$PORT" || return 1
+  if [[ "$CHECK_V6" == 1 ]] && ! web_ok_host "::1" "$PORT"; then return 1; fi
+  if [[ "$MODE" == "slider" ]]; then return 0; fi
+  ws_probe "$WS_PORT" handshake "127.0.0.1" || return 1
+  health_ok "$HTTP_PORT" || return 1
+  if [[ "$CHECK_V6" == 1 ]]; then
+    ws_probe "$WS_PORT" handshake "::1" || return 1
+    health_ok_host "::1" "$HTTP_PORT" || return 1
+  fi
+}
+
 wait_healthy() {
   local i
   for i in $(seq 1 40); do
-    if web_ok "$PORT"; then
-      if [[ "$MODE" == "slider" ]]; then return 0; fi
-      if ws_probe "$WS_PORT" handshake && health_ok "$HTTP_PORT"; then return 0; fi
-    fi
+    if endpoints_ready; then return 0; fi
     if [[ -n "${WEB_PID:-}" ]] && ! kill -0 "$WEB_PID" 2>/dev/null; then
       log "静态服务提前退出。日志："
       tail -n 30 "$RUN_DIR/web.log" >&2 || true
@@ -362,11 +426,18 @@ prepare_images() {
   fi
 }
 
-health_ok() {
-  local body
-  body="$(curl -fsS --max-time 2 "http://127.0.0.1:${1}/health" 2>/dev/null || true)"
+health_ok_host() {
+  local host="$1" port="$2" url body
+  if [[ "$host" == "::1" ]]; then
+    url="http://[::1]:${port}/health"
+  else
+    url="http://${host}:${port}/health"
+  fi
+  body="$(curl -g -fsS --max-time 2 "$url" 2>/dev/null || true)"
   [[ "$body" == *'"ok": true'* ]]
 }
+
+health_ok() { health_ok_host "127.0.0.1" "$1"; }
 
 same_request() {
   load_session || return 1
@@ -427,7 +498,7 @@ EOF
   local tport=8133 started=0
   if ! web_ok "$tport"; then
     if port_busy "$tport"; then die "端口 ${tport} 被占用，而且不是这本书的页面"; fi
-    python3 -m http.server "$tport" --bind 127.0.0.1 --directory "$ROOT/frontend" >"$RUN_DIR/test-web.log" 2>&1 &
+    python3 "$ROOT/backend/static_server.py" --port "$tport" --directory "$ROOT/frontend" --bind loopback >"$RUN_DIR/test-web.log" 2>&1 &
     started=$!
     local i
     for i in $(seq 1 40); do web_ok "$tport" && break; sleep 0.1; done
@@ -609,6 +680,7 @@ case "$DOCKER_MODE" in
 esac
 
 if same_request && already_healthy && [[ "$RESTART" != 1 ]]; then
+  if ipv6_loopback && web_ok_host "::1" "$PORT"; then CHECK_V6=1; fi
   ok "已经在运行（${MODE}，${TRANSPORT}），不重复启动"
   print_status
   maybe_open_browser
@@ -665,15 +737,35 @@ OWNED=1
 if [[ "$TRANSPORT" == "docker" ]]; then
   log "启动容器 popup-book-web"
   docker rm -f popup-book-web >/dev/null 2>&1 || true
-  WEB_CID="$(docker run -d --name popup-book-web -p "127.0.0.1:${PORT}:8000" popup-book-web:local)"
+  CHECK_V6=0
+  if ipv6_loopback && WEB_CID="$(docker run -d --name popup-book-web -p "127.0.0.1:${PORT}:19081" -p "[::1]:${PORT}:19081" popup-book-web:local)"; then
+    CHECK_V6=1
+  else
+    docker rm -f popup-book-web >/dev/null 2>&1 || true
+    log "容器端口发不到 ::1，静态页只发布在 127.0.0.1。请打开脚本打印的地址"
+    WEB_CID="$(docker run -d --name popup-book-web -p "127.0.0.1:${PORT}:19081" popup-book-web:local)"
+    CHECK_V6=0
+  fi
   if [[ "$MODE" == "fake" ]]; then
     log "启动容器 popup-book-bridge（假角度）"
     docker rm -f popup-book-bridge >/dev/null 2>&1 || true
-    BRIDGE_CID="$(docker run -d --name popup-book-bridge -p "127.0.0.1:${WS_PORT}:8765" -p "127.0.0.1:${HTTP_PORT}:8766" popup-book-bridge:local --port 8765 --http-port 8766 --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET")"
+    bridge_ok=0
+    if [[ "$CHECK_V6" == 1 ]] && BRIDGE_CID="$(docker run -d --name popup-book-bridge -p "127.0.0.1:${WS_PORT}:19876" -p "[::1]:${WS_PORT}:19876" -p "127.0.0.1:${HTTP_PORT}:19877" -p "[::1]:${HTTP_PORT}:19877" popup-book-bridge:local --port 19876 --http-port 19877 --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET")"; then
+      bridge_ok=1
+    fi
+    if [[ "$bridge_ok" != 1 ]]; then
+      docker rm -f popup-book-bridge >/dev/null 2>&1 || true
+      if [[ "$CHECK_V6" == 1 ]]; then
+        log "桥的端口发不到 ::1，只发布在 127.0.0.1"
+      fi
+      CHECK_V6=0
+      BRIDGE_CID="$(docker run -d --name popup-book-bridge -p "127.0.0.1:${WS_PORT}:19876" -p "127.0.0.1:${HTTP_PORT}:19877" popup-book-bridge:local --port 19876 --http-port 19877 --hz "$HZ" --smooth "$SMOOTH" --offset "$OFFSET")"
+    fi
   fi
 else
-  log "本机静态服务 127.0.0.1:${PORT}  ← frontend/"
-  python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$ROOT/frontend" >"$RUN_DIR/web.log" 2>&1 &
+  if ipv6_loopback; then CHECK_V6=1; else CHECK_V6=0; fi
+  log "本机静态服务 ${PORT}（127.0.0.1 和 ::1）← frontend/"
+  python3 "$ROOT/backend/static_server.py" --port "$PORT" --directory "$ROOT/frontend" --bind loopback >"$RUN_DIR/web.log" 2>&1 &
   WEB_PID=$!
 fi
 

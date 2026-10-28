@@ -1,14 +1,19 @@
   html,body{margin:0;height:100%;overflow:hidden;background:#241c17;color:#f6ead2;
     font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif;}
-  #stage{position:fixed;inset:0;}
+  #stage{position:fixed;inset:0;z-index:0;}
   canvas{display:block;width:100%;height:100%;}
   /* 暗角 */
   #vignette{position:fixed;inset:0;pointer-events:none;
     background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%);}
-  #caption{position:fixed;left:50%;top:16px;transform:translateX(-50%);padding:6px 16px;border-radius:999px;
+  #caption{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:8;padding:6px 16px;border-radius:999px;
     background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:14px;letter-spacing:.08em;white-space:nowrap;
     transition:opacity .4s;}
-  #hud{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(680px,92vw);
+  #caption.mood{font-size:22px;padding:10px 22px;background:rgba(30,22,16,.88);letter-spacing:.14em}
+  #caption.greet{font-size:32px;padding:14px 28px;color:#ffe7b8;background:rgba(92,48,18,.92);
+    box-shadow:0 10px 28px rgba(0,0,0,.35)}
+  #caption.wake{font-size:28px;padding:12px 26px;color:#fff6e4;background:rgba(72,36,64,.92)}
+  #caption.sleep{font-size:26px;padding:12px 24px;color:#efe4ff;background:rgba(42,32,64,.92)}
+  #hud{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9;width:min(680px,92vw);
     background:rgba(30,22,16,.72);backdrop-filter:blur(8px);border-radius:14px;padding:10px 16px 12px;
     box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:13px;}
   #hud .row{display:flex;align-items:center;gap:12px;}
@@ -21,7 +26,7 @@
   #dot.stale{background:#e2b84a;box-shadow:0 0 8px #e2b84a}
   button{background:#f2a24a;color:#2a1a0e;border:0;border-radius:8px;padding:5px 10px;font:inherit;cursor:pointer}
   button.ghost{background:transparent;color:#f6ead2;border:1px solid rgba(255,255,255,.3)}
-  #hint{position:fixed;right:12px;top:12px;font-size:12px;opacity:.55}
+  #hint{position:fixed;right:12px;top:12px;z-index:8;font-size:12px;opacity:.55}
   body.nohud #hud,body.nohud #caption,body.nohud #hint,body.nohud #tools,body.nohud #nudge,body.nohud #perf{display:none}
   #perf{position:fixed;left:12px;bottom:12px;z-index:8;font:12px/1.4 ui-monospace,monospace;color:#f6ead2;
     background:rgba(20,14,10,.72);padding:4px 8px;border-radius:8px;pointer-events:none}

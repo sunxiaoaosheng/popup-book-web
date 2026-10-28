@@ -28,6 +28,7 @@
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
+| `frontend/js/kitten-memory.js` `kitten-mood.js` `kitten-lines.js` | 小猫的记性、心情、闲置小动作。纯逻辑，单测在 `tests/unit/kitten-mood.test.js`。画面在 `kitten-look.js`，存档订阅在 `kitten-wire.js` |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
@@ -116,6 +117,13 @@
 - `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
 - 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
 
+## 二·十一、小猫会记得你（不剧透版）
+
+- 记性写在原来的浏览器存档里。第一次见面、隔了几个小时、换了一天再打开，它打招呼的话不一样。刚刷新页面不会反复寒暄。
+- 心情会变：在它出来玩的角度停大约 9 秒，它会闭上眼、头上冒出很大的 Zzz；把盖子轻轻抖大约 1° 就伸个懒腰醒过来。四十五分钟里打开够三次，它会兴奋；二十分钟内被猛地合上过，它会把耳朵压平、脸红。手账仍是 8 条，秘密的触发角度没有改。
+- 醒着时眨眼、歪头、舔爪子会换着来，不会按同一个圈循环。偶尔冒出一句很短的话。这些话让路给秘密和换季字幕。落点没改，仍在门洞里和台阶之间的平地上。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.kitten`。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -136,7 +144,7 @@
 
 后台启动不会问 `[y/n]`，缺的 Python 依赖会直接装。`.app` 里的启动器设了 `POPUP_FOREGROUND=1`，那个进程留在前台，方便系统把它当成正在运行的应用；另开终端仍可以用仓库里的 `./start.sh stop`（pid 写在包内的 `logs/`）。
 
-默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:8000>）。左下圆点变绿，滑块被禁用，书跟着 0→130→0 开合。
+默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:19081/?ws=ws://127.0.0.1:19876>），一次即可，不用连刷。脚本会等静态页和桥都开始听（本机有 IPv6 时包括 `::1`）才打印这行。左下圆点变绿，按钮是「■ 停止演示」，书跟着 0→130→0 开合。再点一次按钮，扫角停住，滑块可以拖。`./start.sh --sensor` 不会打开这段演示，合页角度直接驱动书。
 
 同一模式再执行一次：服务还健康的话只打印地址，不会占第二个端口。
 
@@ -148,7 +156,7 @@
 ./start.sh --no-docker              # 本机 python，不建容器
 ./start.sh --docker                 # 必须用 Docker
 ./start.sh --restart                # 停掉上次的进程/容器再启动
-./start.sh --port 8123 --ws-port 8765
+./start.sh --port 8123 --ws-port 19876
 ./start.sh --sensor --smooth 0.5 --offset -3
 ./start.sh stop
 ./start.sh test --yes              # ESLint、tsc、单元测试、无头冒烟
@@ -201,16 +209,16 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 
-桥连上且角度在 1.5 秒内到达时，左下圆点是绿的，滑块禁用。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次，不会越连越多。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`。
+桥连上且角度在 1.5 秒内到达时，左下圆点是绿的。假角度桥这时按钮是「■ 停止演示」，滑块禁用；再点一次改为滑块。实机合页（`--sensor`）按钮保持「▶ 自动演示」，角度跟盖子走，滑块禁用。只有再点按钮才会暂时改成本地扫角，点「停止」后回到合页。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次；握手卡住超过 1.5 秒会主动关掉再连，不会越连越多，也不必靠刷新。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`（默认 19877）。
 
 ### 仍想手动启动
 
 ```bash
-python3 -m http.server 8000 --directory frontend
+python3 backend/static_server.py --port 19081 --directory frontend --bind loopback
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 backend/.venv/bin/python backend/bridge.py --fake
-curl -s http://127.0.0.1:8766/health
+curl -s http://127.0.0.1:19877/health
 ```
 
 真实传感器改用 `backend/requirements-sensor.txt`，macOS 上先 `brew install hidapi`，然后去掉 `--fake`。
@@ -224,8 +232,8 @@ curl -s http://127.0.0.1:8766/health
 | `--offset` | 0 | 角度偏移（校准用，度） |
 | `--smooth` | 0 | 低通平滑 0–0.95，数值越大越稳越慢 |
 | `--clamp` | 180 | 角度上限（网页自己会再限制到 130） |
-| `--host` / `--port` | localhost / 8765 | WebSocket 监听地址 |
-| `--http-port` | 8766 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
+| `--host` / `--port` | localhost / 19876 | WebSocket 监听地址。`localhost`、`127.0.0.1`、`::1` 会同时绑 IPv4 和 IPv6 环回 |
+| `--http-port` | 19877 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
 
 ## 四、排查问题
 

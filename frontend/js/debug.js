@@ -3,6 +3,7 @@ import { Sound } from './audio.js';
 import { createFeelState, stepHingeFeel } from './hinge-feel.js';
 import { lerp } from './math.js';
 import { step } from './sim.js';
+import { ritualFront, ritualIntensity, ritualKind } from './season-ritual.js';
 
 export function attachDebug(W, input) {
   const { S } = W;
@@ -88,6 +89,7 @@ export function attachDebug(W, input) {
       renderNow();
     },
     forceSeason(i) { W.setSeason(i, true); },
+    beginSeason(i) { W.setSeason(i, false); },
     render() { renderNow(); },
     project(name) {
       const o = {
@@ -121,6 +123,9 @@ export function attachDebug(W, input) {
         kittenMode: S.kittenMode,
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
+        ritual: (SEASON.from !== SEASON.to && SEASON.t < 1) ? ritualKind(SEASON.to) : '',
+        ritualAmp: +ritualIntensity(SEASON.t).toFixed(3),
+        ritualFront: +ritualFront(SEASON.t).toFixed(3),
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
         feel: W.store.feel,
         camFov: +W.camera.fov.toFixed(3),

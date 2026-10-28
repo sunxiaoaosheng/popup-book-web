@@ -28,11 +28,13 @@ flowchart LR
 | `frontend/js/kitten-machine.js` | 小猫这一拍是 `hidden` / `nap` / `dawn` / `play` |
 | `frontend/js/season-machine.js` | 打开过程中的换季进度 |
 | `frontend/js/season-beats.js` | 春、冬的两句季节反应，不是秘密 |
+| `frontend/js/season-ritual.js` `sky-bands.js` | 换季锋面曲线、每季动机、天空时段权重。不引用 Three |
+| `frontend/js/season-sweep.js` `sky-gradient.js` `season-light.js` `season-motif.js` | 扫场粒子、天空渐变、光色、现场合成的短动机 |
 | `frontend/js/bus.js` | 同步事件总线 |
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*` |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*` |
 | `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
 | `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
 | `frontend/js/share-draw.js` | 把排版画到画布 |

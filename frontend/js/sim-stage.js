@@ -4,17 +4,11 @@ import { clamp, lerp, sstep } from './math.js';
 import { timeOfDay as timeOfDayName } from './rules.js';
 import { emitAll } from './bus.js';
 import { stepSeason } from './season-machine.js';
-import { SKY } from './season.js';
-import { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './build-sky.js';
+import { SUN_ARC, sunAt, TIMES } from './build-sky.js';
+import { applySeasonLight } from './season-light.js';
 
 const glassOff = new THREE.Color('#7f8f9a');
 const glassOn = new THREE.Color('#ffd37a');
-const hemiGndDay = new THREE.Color('#7a6a5a');
-const hemiGndNight = new THREE.Color('#2b2f4a');
-const sunNight = new THREE.Color('#9fb4ff');
-const hemiSkyNight = new THREE.Color('#5b6fb5');
-const BG0 = new THREE.Color('#2a211b');
-const BG1 = new THREE.Color('#10162b');
 
 function erect(b, q, obj, h, th, tanTh, lidY) {
   const want = Math.max(0, q) * Math.PI / 2;
@@ -73,11 +67,7 @@ export function stepStage(W, dt) {
   const SEASON = W.SEASON;
   emitAll(W.bus, stepSeason(SEASON, S, A));
 
-  const SK = SKY[SEASON.to];
-  const SF = SKY[SEASON.from];
   const se = SEASON.t;
-  const c1 = W.tmp.c1, c2 = W.tmp.c2, c3 = W.tmp.c3;
-  const mixC = (key, out) => out.lerpColors(SF[key], SK[key], se);
   const dayRaw = clamp((A - SUN_ARC.a0) / (SUN_ARC.a1 - SUN_ARC.a0), -0.08, 1.08);
   const sunU = S.sunU.step(dayRaw, dt);
   S.dayU = sunU;
@@ -100,30 +90,13 @@ export function stepStage(W, dt) {
   const slx = lerp(13 * Math.cos(Math.PI * uc), 7, nightP);
   const sly = lerp(3.5 + 13 * elev, 13, nightP);
   sun.position.set(slx, sly, 11);
-  sun.intensity = lerp(lerp(SF.sunI, SK.sunI, se) * (0.62 + 0.38 * elev), 1.3, nightP);
-  mixC('sun', c1);
-  c1.lerp(SUN_LOW, 0.75 * lowP);
-  sun.color.lerpColors(c1, sunNight, nightP);
-  const hemi = W.gfx.hemi;
-  hemi.intensity = lerp(1.5 - 0.25 * lowP, 1.05, nightP);
-  mixC('hemi', c1);
-  hemi.color.lerpColors(c1, hemiSkyNight, nightP);
-  hemi.groundColor.lerpColors(hemiGndDay, hemiGndNight, nightP);
-  mixC('day', c1);
-  c1.lerp(DAWN_SKY, 0.7 * dawnP);
-  mixC('mid', c2);
-  c3.lerpColors(c1, c2, goldP);
-  mixC('night', c2);
-  W.skyMat.color.lerpColors(c3, c2, nightP);
-  W.horizonMat.color.lerpColors(DAWN_GLOW, DUSK_GLOW, sstep(0.3, 0.7, uc));
-  W.horizonMat.opacity = Math.max(0.55 * dawnP, 0.85 * goldP) * (1 - nightP);
+  applySeasonLight(W, { se, uc, nightP, dawnP, goldP, elev });
   W.paperSun.userData.halo.material.opacity = 0.32 + 0.3 * lowP;
   S.dayC = uc;
   S.goldP = goldP;
   F.goldP = goldP;
   S.nightP = nightP;
   S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : timeOfDayName(uc, TIMES));
-  W.gfx.scene.background.copy(BG0).lerp(BG1, nightP * 0.6);
 
   for (const t of W.terraces) {
     const p = t.spr.step(sstep(t.t0, t.t1, A), dt);

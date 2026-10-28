@@ -8,6 +8,7 @@ import { buildForest } from './build-forest.js';
 import { buildCabin } from './build-cabin.js';
 import { buildCritters } from './build-critters.js';
 import { SKY, createSeason } from './season.js';
+import { buildSeasonSweep } from './season-sweep.js';
 import { createBus } from './bus.js';
 
 export function createWorld(stageEl) {
@@ -44,6 +45,7 @@ export function createWorld(stageEl) {
   buildForest(W);
   buildCabin(W);
   buildCritters(W);
+  buildSeasonSweep(W);
   createSeason(W);
   return W;
 }

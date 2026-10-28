@@ -4,7 +4,7 @@ import { hopProgress } from './kitten-place.js';
 import { TUNING } from './tuning.js';
 import { heartTarget } from './rules.js';
 import { emitAll } from './bus.js';
-import { stepHolds, stepShake, stepStartle } from './play-machine.js';
+import { stepClose, stepHolds, stepShake, stepStartle } from './play-machine.js';
 
 export function stepMotion(W, dt) {
   const { S, frame: F } = W;
@@ -15,7 +15,7 @@ export function stepMotion(W, dt) {
   S.prevFiltered = S.filtered;
   S.vel += (v - S.vel) * (1 - Math.exp(-dt / 0.12));
   S.sp += (Math.abs(S.vel) - S.sp) * (1 - Math.exp(-dt / 0.2));
-  const A = S.filtered;
+  let A = S.filtered;
   if (S.vel > 6) {
     if (S.lastDir < 0) S.yawnT = 99;
     S.lastDir = 1;
@@ -25,6 +25,11 @@ export function stepMotion(W, dt) {
   }
   if (S.yawnT < 99) S.yawnT += dt;
   const sp = S.sp;
+
+  // 合盖在天空和扫场粒子之前结算。那些画面抛错时也不能把季节 +1 吃掉。
+  // 隐藏期间补上的合严会把 filtered 拉低，后面的姿势跟这个新角度走。
+  emitAll(W.bus, stepClose(S, { angle: A, speed: sp }));
+  A = S.filtered;
 
   emitAll(W.bus, stepShake(S, { angle: A, time: T }));
   S.burstT = Math.max(0, S.burstT - dt);

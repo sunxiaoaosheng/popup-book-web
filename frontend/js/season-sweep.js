@@ -1,7 +1,7 @@
 // 换季时一道粒子锋面扫过场面。几何在开场分配一次，平时 count 为 0。
 import * as THREE from '../vendor/three.module.js';
 import { clamp, lerp } from './math.js';
-import { ellipseShape } from './materials.js';
+import { ellipseShape, glowTex } from './materials.js';
 import { ritualIntensity, ritualKind, sweepParticle } from './season-ritual.js';
 import { TUNING } from './tuning.js';
 
@@ -32,17 +32,15 @@ export function buildSeasonSweep(W) {
   mesh.renderOrder = 6;
   W.scene.add(mesh);
 
-  const haze = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.6, 2.15),
-    new THREE.MeshBasicMaterial({
-      color: '#d6ee86',
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
-    }),
-  );
+  const haze = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTex,
+    color: '#e4f59a',
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  haze.scale.set(5.4, 2.15, 1);
   haze.frustumCulled = false;
   haze.renderOrder = 4;
   haze.visible = false;
@@ -112,8 +110,8 @@ export function stepSeasonSweep(W) {
   mesh.instanceMatrix.needsUpdate = true;
 
   const showHaze = kind === 'fireflies';
-  const zH = 2.35;
-  const yH = clamp(underLid(F, zH) * 0.62, 0.7, 2.5);
+  const zH = 1.7;
+  const yH = clamp(underLid(F, zH) * 0.82, 1.2, 2.8);
   haze.visible = showHaze;
   haze.position.set(lerp(-4.7, 4.7, slot.front), yH, zH);
   haze.material.opacity = showHaze ? inten * TUNING.ritualHaze : 0;

@@ -4,8 +4,9 @@ import { createBus, emitAll } from '../../frontend/js/bus.js';
 import { resolveKittenMode, stepKittenMode } from '../../frontend/js/kitten-machine.js';
 import { stepClose, stepHolds, stepShake, stepStartle } from '../../frontend/js/play-machine.js';
 import { noteHiddenClose } from '../../frontend/js/rules.js';
+import { ritualIntensity } from '../../frontend/js/season-ritual.js';
 import { stepSeasonBeats } from '../../frontend/js/season-beats.js';
-import { stepSeason } from '../../frontend/js/season-machine.js';
+import { noteSeasonReveal, stepSeason } from '../../frontend/js/season-machine.js';
 import { TUNING } from '../../frontend/js/tuning.js';
 
 function book() {
@@ -237,6 +238,103 @@ test('season morph caption happens once inside the band', () => {
   assert.ok(mid.some((e) => e.phase === 'caption' && e.text.includes('换季了')));
   assert.ok(SEASON.t > 0.2 && SEASON.t < 0.7);
   assert.equal(stepSeason(SEASON, S, 40).length, 0);
+});
+
+test('pending season + become visible while already open → morph once', () => {
+  const S = book();
+  S.armed = true;
+  S.filtered = 90;
+  S.pageHidden = true;
+  let track = { t: null, a: null, max: 0 };
+  track = noteHiddenClose(S, track, 70, 1000);
+  track = noteHiddenClose(S, track, 2, 1600);
+  assert.equal(track.a, 2);
+  assert.equal(S.lidShut, true);
+  const closed = stepClose(S, { angle: 90, speed: 0 });
+  assert.equal(closed[0].type, 'close');
+  assert.ok(S.filtered < TUNING.seasonMorphLo);
+
+  const SEASON = { from: 0, to: 1, t: 0 };
+  S.seasonMorphSaid = false;
+  S.seasonCatchup = false;
+  S.pageHidden = true;
+  assert.equal(noteSeasonReveal(SEASON, S, 96, true), true);
+  assert.equal(S.revealOpen, true);
+
+  const dt = 0.05;
+  const first = stepSeason(SEASON, S, 96, dt);
+  assert.equal(S.seasonCatchup, true);
+  assert.equal(S.revealOpen, false);
+  assert.ok(first.some((e) => e.phase === 'morph'));
+  assert.ok(first.some((e) => e.phase === 'caption' && e.text.includes('换季了')));
+  assert.ok(SEASON.t > 0 && SEASON.t < 0.2);
+  assert.ok(ritualIntensity(SEASON.t) > 0.05);
+  assert.ok(SEASON.t < 1 && SEASON.from !== SEASON.to);
+
+  const hold = book();
+  hold.hold.anchor = 50;
+  stepHolds(hold, {
+    dt: 3, time: 5, angle: 50, speed: 0, cabinP: 1, peekP: 0, eggP: 0,
+    seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to,
+  });
+  assert.equal(hold.holdRing, -1);
+  assert.equal(hold.dawnSaid, false);
+
+  let captions = 1;
+  for (let i = 0; i < 80 && SEASON.t < 1; i++) {
+    const ev = stepSeason(SEASON, S, 120, dt);
+    captions += ev.filter((e) => e.phase === 'caption').length;
+  }
+  assert.equal(SEASON.t, 1);
+  assert.equal(captions, 1);
+  assert.equal(S.seasonCatchup, false);
+  assert.equal(stepSeason(SEASON, S, 120, dt).length, 0);
+
+  S.pageHidden = true;
+  assert.equal(noteSeasonReveal(SEASON, S, 120, true), false);
+  assert.equal(stepSeason(SEASON, S, 120, dt).length, 0);
+});
+
+test('a hidden close that lands as the page is shown still catches up once', () => {
+  const S = book();
+  S.armed = true;
+  S.lidShut = true;
+  S.pageHidden = true;
+  const SEASON = { from: 0, to: 0, t: 1 };
+  assert.equal(noteSeasonReveal(SEASON, S, 88, true), true);
+  SEASON.from = 0;
+  SEASON.to = 1;
+  SEASON.t = 0;
+  S.seasonCatchup = false;
+  S.seasonMorphSaid = false;
+  assert.equal(stepSeason(SEASON, S, 4, 0.05).length, 0);
+  assert.equal(SEASON.t, 0);
+  assert.equal(S.revealOpen, true);
+  const ev = stepSeason(SEASON, S, 90, 0.05);
+  assert.ok(SEASON.t > 0 && SEASON.t < 0.2);
+  assert.equal(S.seasonCatchup, true);
+  assert.ok(ev.some((e) => e.phase === 'caption'));
+  assert.equal(stepSeason(SEASON, S, 90, TUNING.seasonCatchupSec).filter((e) => e.phase === 'caption').length, 0);
+  assert.equal(SEASON.t, 1);
+});
+
+test('shown while still closed keeps the angle morph, and a visible fast open still snaps', () => {
+  const shut = book();
+  shut.pageHidden = true;
+  const SEASON = { from: 2, to: 3, t: 0 };
+  assert.equal(noteSeasonReveal(SEASON, shut, 3, true), false);
+  assert.equal(shut.revealOpen, false);
+  const mid = stepSeason(SEASON, shut, 40, 0.05);
+  assert.ok(mid.some((e) => e.phase === 'morph'));
+  assert.ok(SEASON.t > 0.2 && SEASON.t < 0.8);
+  assert.equal(!!shut.seasonCatchup, false);
+
+  const fast = book();
+  const jumped = { from: 0, to: 1, t: 0 };
+  const ev = stepSeason(jumped, fast, 100, 0.016);
+  assert.equal(jumped.t, 1);
+  assert.equal(!!fast.seasonCatchup, false);
+  assert.ok(ev.some((e) => e.phase === 'caption'));
 });
 
 test('spring and winter beats are not secrets and yield to a busy caption', () => {

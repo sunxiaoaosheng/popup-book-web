@@ -12,6 +12,7 @@ import { createPerfPanel } from './perf-panel.js';
 import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
 import { step } from './sim.js';
+import { noteSeasonReveal } from './season-machine.js';
 import { attachDebug } from './debug.js';
 import { attachShare } from './share-wire.js';
 import { attachJournalWatch } from './journal-watch.js';
@@ -56,19 +57,26 @@ function isMoving() {
 const perf = W.gfx.perf;
 let last = performance.now();
 
+function noteShown() {
+  // 用盖子读数，不用还在追的过滤角。隐藏期间合严、解锁时已经张开，就在这里挂上补播。
+  noteSeasonReveal(W.SEASON, S, S.target, !document.hidden);
+}
+document.addEventListener('visibilitychange', noteShown);
+window.addEventListener('focus', noteShown);
+
 function frame(now) {
   const raw = (now - last) / 1000;
   last = now;
+  const dt = Math.min(0.05, Math.max(0, raw));
+  input.tick(document.hidden ? 0 : dt);
+  noteShown();
   if (!shouldRender(document.hidden)) {
-    input.tick(0);
     // 屏幕被盖住时通常不再画。若这一拍仍然被调用，把已经记下的合严结算掉。
-    if (S.lidShut) step(W, Math.min(0.05, Math.max(0, raw)));
+    if (S.lidShut) step(W, dt);
     perfPanel.paused();
     requestAnimationFrame(frame);
     return;
   }
-  const dt = Math.min(0.05, Math.max(0, raw));
-  input.tick(dt);
   step(W, dt);
   W.gfx.requestShadow(dt, isMoving());
   W.gfx.renderer.render(W.gfx.scene, W.gfx.camera);

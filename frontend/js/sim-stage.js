@@ -65,7 +65,7 @@ export function stepStage(W, dt) {
   }
 
   const SEASON = W.SEASON;
-  emitAll(W.bus, stepSeason(SEASON, S, A));
+  emitAll(W.bus, stepSeason(SEASON, S, A, dt));
 
   const se = SEASON.t;
   const dayRaw = clamp((A - SUN_ARC.a0) / (SUN_ARC.a1 - SUN_ARC.a0), -0.08, 1.08);

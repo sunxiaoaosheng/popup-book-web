@@ -107,11 +107,15 @@ export function createSeason(W) {
       SEASON.from = SEASON.to = i;
       SEASON.t = 1;
       S.seasonMorphSaid = false;
+      S.seasonCatchup = false;
+      S.revealOpen = false;
     } else {
       SEASON.from = SEASON.to;
       SEASON.to = i;
       SEASON.t = 0;
       S.seasonMorphSaid = false;
+      // 新的一次合盖改走角度。刚解锁时挂上的 revealOpen 留着，等过滤角追上再补播。
+      S.seasonCatchup = false;
     }
     S.season = i;
     applySeasonVisuals();

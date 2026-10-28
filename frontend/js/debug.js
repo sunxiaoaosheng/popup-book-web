@@ -125,6 +125,7 @@ export function attachDebug(W, input) {
         moodCap: S.moodCap || '', greet: S.kittenMood.greetKind || '',
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
+        seasonCatchup: !!S.seasonCatchup, revealOpen: !!S.revealOpen,
         ritual: (SEASON.from !== SEASON.to && SEASON.t < 1) ? ritualKind(SEASON.to) : '',
         ritualAmp: +ritualIntensity(SEASON.t).toFixed(3),
         ritualFront: +ritualFront(SEASON.t).toFixed(3),

@@ -32,7 +32,12 @@ flowchart LR
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处 |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡的尺寸和短片秒数在 `SHARE` |
+| `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
+| `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
+| `frontend/js/share-draw.js` | 把排版画到画布 |
+| `frontend/js/share-capture.js` | 读 WebGL、下载、剪贴板、短片 |
+| `frontend/js/share-wire.js` | 按钮和 `C`。没在录的时候不读像素 |
 
 `S` 仍是运行时状态，`__popup.dbg()` 读的是同一份。状态机没有自己藏一份平行状态。
 

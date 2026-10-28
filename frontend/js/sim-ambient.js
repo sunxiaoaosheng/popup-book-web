@@ -179,9 +179,20 @@ export function stepAmbient(W, dt) {
   }
   const storyOn = T < S.capUntil;
   if (S.tod && !storyOn) ct = `${S.tod} · ${ct}`;
+  let moodKind = '';
   if (storyOn) ct = S.cap;
-  else if (S.moodCap && T < S.moodUntil) ct = S.moodCap;
+  else if (S.moodCap && T < S.moodUntil) {
+    ct = S.moodCap;
+    moodKind = S.moodKind || 'line';
+  }
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
+  if (caption.dataset.mood !== moodKind) {
+    caption.dataset.mood = moodKind;
+    caption.classList.toggle('mood', !!moodKind);
+    caption.classList.toggle('greet', moodKind === 'greet');
+    caption.classList.toggle('wake', moodKind === 'wake');
+    caption.classList.toggle('sleep', moodKind === 'sleep');
+  }
   S.nudgeT += dt;
   if (S.nudgeT > 45 && A > 3 && W.store.foundCount() < SECRETS.length) {
     S.nudgeT = 0;

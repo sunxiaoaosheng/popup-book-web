@@ -63,8 +63,8 @@ export const TUNING = {
     /** 低于此时算合上，再开过 openAbove 记一次打开。 */
     shutBelow: 12,
     openAbove: 72,
-    /** 小猫在玩的姿势里几乎不动这么久，就打盹。 */
-    idleSleepSec: 16,
+    /** 小猫在玩的姿势里几乎不动这么久，就打盹。大约 8–10 秒，方便一眼看见。 */
+    idleSleepSec: 9,
     /** 低于这个角速度（度/秒）算停着。 */
     idleSpeed: 2.4,
     /** 睡着时，角度在一小段里抖过这么多度、速度也落下来，才轻轻醒来。 */
@@ -78,16 +78,22 @@ export const TUNING = {
     /** 噪声累积的衰减时间常数（秒）。 */
     jitterDecay: 1.4,
     /** 醒来后至少醒着这么久，才肯再睡。 */
-    wakeHoldSec: 8,
-    /** 醒来那一下耳朵竖着的时间。 */
-    wakeFlash: 1.15,
+    wakeHoldSec: 6,
+    /** 醒来那一下伸懒腰、瞪眼的时间。 */
+    wakeFlash: 1.85,
+    /** 招呼、叫醒、打盹、闲话在屏幕上各停这么久。招呼要盖过开到窗台的那几秒。 */
+    greetSec: 7,
+    wakeCapSec: 6,
+    sleepCapSec: 5,
+    lineSec: 3.6,
     /** 两句闲话之间至少隔这么久。 */
-    lineGapSec: 14,
-    /** 一个小动作结束时，说一句的概率。 */
-    lineChance: 0.38,
-    idleMin: 1.5,
-    idleMax: 3.2,
-    idleGapMin: 0.7,
-    idleGapMax: 2.4,
+    lineGapSec: 8,
+    /** 一个小动作结束时，说一句的概率。打盹那句不受这个概率限制。 */
+    lineChance: 0.55,
+    /** 小动作短、间隔更短，换着来才看得出来不是在循环。 */
+    idleMin: 0.85,
+    idleMax: 1.45,
+    idleGapMin: 0.18,
+    idleGapMax: 0.5,
   },
 };

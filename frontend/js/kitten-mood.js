@@ -23,11 +23,12 @@ export function createKittenMood() {
     idleSec: 0,
     wakeHold: 0,
     wakeLeft: 0,
+    wakeDur: 0,
     greeted: false,
     /** @type {string} */
     greetKind: '',
     phase: 'gap',
-    phaseLeft: 0.5,
+    phaseLeft: 0.15,
     actDur: 0.5,
     /** @type {string} */
     act: 'still',
@@ -183,6 +184,7 @@ export function stepKittenMood(M, input, tuning = TUNING.kitten) {
       M.wakeHold = tuning.wakeHoldSec;
       M.wantSleepLine = false;
       if (gentle) {
+        M.wakeDur = tuning.wakeFlash;
         M.wakeLeft = tuning.wakeFlash;
         M.act = 'wake';
         if (!captionBusy) {
@@ -210,16 +212,15 @@ export function stepKittenMood(M, input, tuning = TUNING.kitten) {
     M.idleSec = 0;
   }
 
-  if (M.asleep && M.wantSleepLine && !captionBusy && !spoke && M.lineCd <= 0) {
+  if (M.asleep && M.wantSleepLine && !captionBusy && !spoke) {
     M.wantSleepLine = false;
-    if (rng() < tuning.lineChance) {
-      push({ type: 'kitten-line', text: lineFor('sleepy', rng) });
-      M.lineCd = tuning.lineGapSec;
-      spoke = true;
-    }
+    push({ type: 'kitten-line', kind: 'sleepy', text: lineFor('sleepy', rng) });
+    M.lineCd = tuning.lineGapSec;
+    spoke = true;
   }
 
-  if (!M.greeted && visible && mode !== 'hidden') {
+  // 招呼等到它已经出来玩（大约 76° 以后），开到窗台时这句话还在。
+  if (!M.greeted && visible && mode === 'play') {
     const kind = M.greetKind;
     if (!kind || kind === 'soon') M.greeted = true;
     else if (!captionBusy && !spoke) {

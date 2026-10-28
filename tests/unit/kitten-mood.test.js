@@ -72,6 +72,8 @@ test('greetings differ for first visit, hours, and the next day', () => {
   assert.equal(moodFromMemory({ ...often, slammedAt: now - 5 * 60 * 1000 }, now), 'shy');
   assert.equal(GREETINGS.hours !== GREETINGS.nextday, true);
   assert.equal(GREETINGS.first.length > 0, true);
+  assert.ok(K.idleSleepSec >= 8 && K.idleSleepSec <= 10);
+  assert.ok(K.greetSec >= 6);
 });
 
 test('old saves gain a kitten memory and reset clears it', () => {
@@ -214,7 +216,15 @@ test('look changes the face and leaves the root where it was', () => {
       blush: [{ material: { opacity: 0 } }, { material: { opacity: 0 } }],
       mouth: { visible: false, scale: { set(x, y, z) { this.x = x; this.y = y; this.z = z; } } },
       mouthLine: { visible: true },
-      zzz: [{ ph: 0, s: { visible: false, material: { opacity: 0 } } }],
+      zzz: [{
+        ph: 0,
+        s: {
+          visible: false,
+          material: { opacity: 0 },
+          position: { set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+          scale: { setScalar(v) { this.v = v; } },
+        },
+      }],
       root: { x: 0.2, y: 1.4, z: -0.2 },
     };
   }
@@ -223,13 +233,15 @@ test('look changes the face and leaves the root where it was', () => {
   sleepy.asleep = true;
   sleepy.mood = 'sleepy';
   applyKittenLook(asleep, sleepy, 1, 'play', false);
-  assert.ok(asleep.eyes[0].scale.y < 0.4);
-  assert.equal(asleep.zzz[0].s.visible, false);
+  assert.ok(asleep.eyes[0].scale.y <= 0.1);
+  assert.equal(asleep.zzz[0].s.visible, true);
+  assert.ok(asleep.zzz[0].s.scale.v >= 0.45);
   assert.equal(asleep.root.x, 0.2);
   assert.equal(asleep.head.position.y, 0.6);
   const asleepOut = stub();
   applyKittenLook(asleepOut, sleepy, 1, 'play', true);
   assert.equal(asleepOut.zzz[0].s.visible, true);
+  assert.ok(asleepOut.zzz[0].s.scale.v > asleep.zzz[0].s.scale.v);
   assert.equal(asleepOut.root.x, 0.2);
 
   const nap = stub();
@@ -245,7 +257,9 @@ test('look changes the face and leaves the root where it was', () => {
   mood.actDur = 2;
   mood.phaseLeft = 1;
   applyKittenLook(shy, mood, 1, 'play');
-  assert.ok(shy.blush[0].material.opacity >= 0.6);
+  assert.equal(shy.blush[0].material.opacity, 1);
+  assert.ok(Math.abs(shy.earL.rotation.z) >= 0.7);
+  assert.ok(shy.body.scale.y < 0.85);
   assert.equal(shy.root.y, 1.4);
 
   const wake = stub();
@@ -255,7 +269,18 @@ test('look changes the face and leaves the root where it was', () => {
   waking.wakeLeft = 1.15;
   waking.mood = 'calm';
   applyKittenLook(wake, waking, 1, 'play');
-  assert.ok(wake.eyes[0].scale.y > 0.9);
-  assert.ok(wake.earL.rotation.z < 0);
+  assert.ok(wake.eyes[0].scale.y > 1.2);
+  assert.ok(wake.earL.rotation.z < -0.6);
   assert.equal(wake.head.position.y, 0.6);
+  assert.equal(wake.root.x, 0.2);
+  const wakeOut = stub();
+  wakeOut.eyes[0].scale.y = 0.2;
+  wakeOut.eyes[1].scale.y = 0.2;
+  const wakingOut = createKittenMood();
+  wakingOut.wakeLeft = 1.85;
+  wakingOut.wakeDur = 1.85;
+  applyKittenLook(wakeOut, wakingOut, 1, 'play', true);
+  assert.ok(wakeOut.body.scale.y > 1.2);
+  assert.ok(wakeOut.head.position.y > 0.6);
+  assert.equal(wakeOut.root.x, 0.2);
 });

@@ -334,7 +334,7 @@ export function stepKitten(W, dt) {
     speed: S.sp,
     visible: !!showK,
     mode: S.kittenMode,
-    captionBusy: T < S.capUntil || T < S.moodUntil,
+    captionBusy: T < S.capUntil,
     distracted: !!(S.act.chase || S.act.nap || S.chaseP > 0.05 || S.napP > 0.2 || S.petDown || S.startled > 0.25),
     rng: Math.random,
   }));

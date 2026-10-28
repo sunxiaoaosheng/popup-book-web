@@ -1,88 +1,119 @@
 /**
  * 把心情画在已经摆好的纸模上：眼睛、耳朵、尾巴、嘴。
  * 不改小猫根节点的位置。落点仍由 kitten-place / sim-kitten 决定。
+ * 幅度故意做大，门洞里比窗台收一点，避免耳朵和 Zzz 戳出墙。
  */
 
-/** @param {{actDur:number, phaseLeft:number}} M */
+/** 动作的大部分时间停在最大幅度，方便看出这一下和下一只不一样。 */
 function bell(M) {
   if (!(M.actDur > 0)) return 0;
   const u = 1 - M.phaseLeft / M.actDur;
   if (u <= 0 || u >= 1) return 0;
-  return Math.sin(Math.PI * u);
+  const edge = 0.16;
+  if (u < edge) return u / edge;
+  if (u > 1 - edge) return (1 - u) / edge;
+  return 1;
 }
 
 /**
  * @param {any} K
  * @param {number} time
- * @param {boolean} roomy 窗台以上才浮 Zzz。门洞里不往上冒，免得戳出墙。
+ * @param {boolean} roomy 窗台上空，Zzz 可以再大一号
  */
 function applySleep(K, time, roomy) {
-  for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * 0.22);
-  K.head.rotation.x += 0.16;
-  K.head.rotation.z += 0.06;
-  K.earL.rotation.z += 0.22;
-  K.earR.rotation.z -= 0.22;
-  K.tail.rotation.z *= 0.4;
-  if (!roomy) return;
+  for (const e of K.eyes) {
+    e.scale.y = 0.08;
+    e.scale.x *= 0.92;
+  }
+  K.head.rotation.x += 0.48;
+  K.head.rotation.z += roomy ? 0.22 : 0.1;
+  K.earL.rotation.z += 0.7;
+  K.earR.rotation.z -= 0.7;
+  K.tail.rotation.z *= 0.25;
+  K.body.scale.y *= 0.84;
+  const rise = roomy ? 1.2 : 0.92;
+  const big = roomy ? 0.78 : 0.5;
   for (const z of K.zzz) {
-    const ph = (time * 0.35 + z.ph) % 1;
+    const ph = (time * 0.45 + z.ph) % 1;
     z.s.visible = true;
-    z.s.material.opacity = Math.max(z.s.material.opacity, Math.sin(Math.PI * ph) * 0.85);
+    z.s.position.set(0.02 + 0.42 * ph, rise + ph * 0.38, 0.34);
+    z.s.scale.setScalar(big + ph * 0.28);
+    z.s.material.opacity = 0.72 + 0.28 * Math.sin(Math.PI * ph);
   }
 }
 
-/** @param {any} K @param {number} time @param {boolean} roomy 尾巴只在窗外多甩一点 */
+/** @param {any} K @param {number} time @param {boolean} roomy */
 function applyExcited(K, time, roomy) {
-  for (const e of K.eyes) e.scale.y = Math.min(1.35, e.scale.y * 1.15);
-  K.earL.rotation.z -= 0.16;
-  K.earR.rotation.z += 0.16;
-  if (roomy) K.tail.rotation.z += 0.32 * Math.sin(time * 9);
+  for (const e of K.eyes) {
+    e.scale.y = Math.min(1.6, e.scale.y * 1.35);
+    e.scale.x *= 1.12;
+  }
+  K.earL.rotation.z -= 0.45;
+  K.earR.rotation.z += 0.45;
+  if (roomy) K.tail.rotation.z += 0.85 * Math.sin(time * 9);
 }
 
-/** @param {any} K @param {number} time */
-function applyShy(K, time) {
-  const away = Math.sin(time * 0.7) > 0.15;
-  K.head.rotation.y += away ? -0.28 : 0.04;
-  K.head.rotation.x += 0.1;
-  K.earL.rotation.z += 0.3;
-  K.earR.rotation.z -= 0.3;
-  K.body.scale.y *= 0.94;
-  for (const b of K.blush) b.material.opacity = Math.max(b.material.opacity, 0.62);
+/** @param {any} K @param {number} time @param {boolean} roomy */
+function applyShy(K, time, roomy) {
+  const away = Math.sin(time * 0.7) > -0.2;
+  const turn = roomy ? 0.85 : 0.55;
+  K.head.rotation.y += away ? -turn : turn * 0.25;
+  K.head.rotation.x += 0.38;
+  K.head.rotation.z += roomy ? 0.28 : 0.14;
+  K.earL.rotation.z += 0.95;
+  K.earR.rotation.z -= 0.95;
+  K.body.scale.y *= 0.72;
+  K.tail.rotation.z += roomy ? -0.7 : -0.35;
+  for (const e of K.eyes) e.scale.y = Math.max(0.1, e.scale.y * 0.45);
+  for (const b of K.blush) b.material.opacity = 1;
 }
 
-/** @param {any} K @param {number} w 1 刚醒，0 结束 */
-function applyWake(K, w) {
-  for (const e of K.eyes) e.scale.y = Math.max(e.scale.y, 0.35 + 0.7 * w);
-  K.earL.rotation.z -= 0.4 * w;
-  K.earR.rotation.z += 0.4 * w;
-  K.head.rotation.x -= 0.16 * w;
+/** @param {any} K @param {number} w 1 刚醒 @param {number} time @param {boolean} roomy */
+function applyWake(K, w, time, roomy) {
+  const pop = 0.45 + 1.25 * w;
+  for (const e of K.eyes) {
+    e.scale.y = Math.max(e.scale.y, pop);
+    e.scale.x = Math.max(e.scale.x, 1.05 + 0.45 * w);
+  }
+  const flick = Math.sin(time * 26) * 0.55 * w;
+  K.earL.rotation.z -= 1.05 * w + flick;
+  K.earR.rotation.z += 1.05 * w + flick;
+  K.head.rotation.x -= (roomy ? 0.62 : 0.28) * w;
+  if (roomy) {
+    K.body.scale.y *= 1 + 0.4 * w;
+    K.head.position.y += 0.1 * w;
+  }
 }
 
-/** @param {any} K @param {any} M @param {number} env */
-function applyAct(K, M, env) {
+/** @param {any} K @param {any} M @param {number} env @param {boolean} roomy */
+function applyAct(K, M, env, roomy) {
   if (env <= 0) return;
   const act = M.act;
+  const big = roomy ? 1 : 0.72;
   if (act === 'blink') {
-    for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * (1 - 0.9 * env));
+    for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * (1 - env));
   } else if (act === 'ear') {
-    K.earL.rotation.z += 0.5 * env;
+    K.earL.rotation.z += 1.15 * env * big;
+    K.earR.rotation.z -= 0.35 * env;
   } else if (act === 'tilt') {
-    K.head.rotation.z += 0.2 * env;
+    K.head.rotation.z += (roomy ? 0.78 : 0.5) * env;
   } else if (act === 'tail') {
-    K.tail.rotation.z += 0.4 * env;
+    K.tail.rotation.z += (roomy ? 1.15 : 0.55) * env;
   } else if (act === 'look') {
-    K.head.rotation.y += 0.28 * env * (M.lookSign || 1);
+    K.head.rotation.y += (roomy ? 0.8 : 0.42) * env * (M.lookSign || 1);
   } else if (act === 'lick') {
-    K.head.rotation.x += 0.16 * env;
+    K.head.rotation.x += 0.42 * env;
+    K.head.rotation.z += 0.2 * env;
     K.mouth.visible = true;
     K.mouthLine.visible = false;
-    K.mouth.scale.set(1, Math.max(0.12, 0.4 * env), 1);
+    K.mouth.scale.set(1.2, Math.max(0.35, 0.85 * env), 1);
   } else if (act === 'yawn') {
-    K.head.rotation.x -= 0.2 * env;
+    K.head.rotation.x -= 0.48 * env;
     K.mouth.visible = true;
     K.mouthLine.visible = false;
-    K.mouth.scale.set(1.05, Math.max(0.16, 0.65 * env), 1);
-    for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * (1 - 0.7 * env));
+    K.mouth.scale.set(1.15, Math.max(0.4, 1.05 * env), 1);
+    for (const e of K.eyes) e.scale.y = Math.max(0.08, e.scale.y * (1 - 0.92 * env));
+    if (roomy) K.body.scale.y *= 1 + 0.18 * env;
   }
 }
 
@@ -98,7 +129,9 @@ export function applyKittenLook(K, M, time, mode, roomy = false) {
   const env = bell(M);
   if (mode === 'play' && M.asleep) applySleep(K, time, roomy);
   if (mode === 'play' && !M.asleep && M.mood === 'excited') applyExcited(K, time, roomy);
-  if (mode === 'play' && !M.asleep && M.mood === 'shy') applyShy(K, time);
-  if (M.wakeLeft > 0) applyWake(K, Math.min(1, M.wakeLeft / 1.15));
-  else if (mode === 'play' && !M.asleep) applyAct(K, M, env);
+  if (mode === 'play' && !M.asleep && M.mood === 'shy') applyShy(K, time, roomy);
+  if (M.wakeLeft > 0) {
+    const dur = M.wakeDur > 0 ? M.wakeDur : M.wakeLeft;
+    applyWake(K, Math.min(1, M.wakeLeft / dur), time, roomy);
+  } else if (mode === 'play' && !M.asleep) applyAct(K, M, env, roomy);
 }

@@ -13,21 +13,23 @@ export function wireKitten(W, now = Date.now()) {
   prepareGreeting(M, W.store.kittenMemory(), now);
   W.store.touchSeen(now);
 
-  /** @param {string} text @param {number} sec */
-  const show = (text, sec) => {
+  /** @param {string} text @param {number} sec @param {string} kind */
+  const show = (text, sec, kind) => {
     S.moodCap = text;
     S.moodUntil = S.time + sec;
+    S.moodKind = kind;
   };
 
   W.bus.on('kitten-greet', (e) => {
-    show(e.text, 3.4);
+    show(e.text, kitten.greetSec, 'greet');
     W.sound.mew();
   });
   W.bus.on('kitten-line', (e) => {
-    show(e.text, 2.8);
+    const sleepy = e.kind === 'sleepy';
+    show(e.text, sleepy ? kitten.sleepCapSec : kitten.lineSec, sleepy ? 'sleep' : 'line');
   });
   W.bus.on('kitten-wake', (e) => {
-    show(e.text, 2.6);
+    show(e.text, kitten.wakeCapSec, 'wake');
     W.sound.mew();
   });
   W.bus.on('kitten-open', () => {

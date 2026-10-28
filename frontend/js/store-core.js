@@ -1,13 +1,14 @@
 /**
  * 存档。不碰 localStorage：浏览器适配在 store.js，测试传入内存 read/write。
  */
+import { normalizeFeel } from './hinge-feel.js';
 
-/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, pets:number, opens:number}} SaveData */
+/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, pets:number, opens:number, feel:string}} SaveData */
 /** @typedef {{read:() => (SaveData|null), write:(data:SaveData) => void}} StoreIO */
 
 /** @returns {SaveData} */
 export function blankSave() {
-  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, pets: 0, opens: 0 };
+  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, pets: 0, opens: 0, feel: 'normal' };
 }
 
 /**
@@ -19,6 +20,7 @@ export function createStore(io, initial = null) {
   if (initial && typeof initial === 'object') {
     data.cycles = initial.cycles || 0;
     data.muted = !!initial.muted;
+    data.feel = normalizeFeel(initial.feel);
     data.pets = initial.pets || 0;
     data.opens = initial.opens || 0;
     if (initial.secrets && typeof initial.secrets === 'object') data.secrets = { ...initial.secrets };
@@ -31,6 +33,8 @@ export function createStore(io, initial = null) {
     get cycles() { return data.cycles; },
     get muted() { return data.muted; },
     setMuted(m) { data.muted = !!m; save(); },
+    get feel() { return data.feel; },
+    setFeel(level) { data.feel = normalizeFeel(level); save(); },
     hasSecret(id) { return !!data.secrets[id]; },
     foundCount() { return Object.keys(data.secrets).length; },
     /** @param {string} id @returns {boolean} 第一次发现 */
@@ -51,6 +55,7 @@ export function createStore(io, initial = null) {
       data.secrets = fresh.secrets;
       data.seasons = fresh.seasons;
       data.muted = fresh.muted;
+      data.feel = fresh.feel;
       data.pets = fresh.pets;
       data.opens = fresh.opens;
       save();

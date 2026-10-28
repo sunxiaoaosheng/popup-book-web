@@ -1,9 +1,14 @@
 // 全部声音都由 WebAudio 现场合成，没有任何外部音频文件。
+// 合页嘎吱、纸声层和落点轻撞在 hinge-audio.js，这里只把它们接到主音量上。
+import { HingeFoley } from './hinge-audio.js';
 // 浏览器要求用户手势后才能出声：这里的 AudioContext 只在 unlock() 被调用时才创建。
 // 也可以 attach(OfflineAudioContext) 做离线渲染，用来在无头环境里验证"确实有声音"。
 export class Sound {
   constructor() {
     this.ctx = null; this.ready = false; this.muted = false;
+    this.hinge = new HingeFoley();
+    this._hingeHeld = false;
+    this._hingeIdle = false;
     this.events = [];            // 最近触发过的音效名（测试用）
     this._t = 0; this._chirpT = 2; this._env = { amb: 0, night: 0, season: 0, speed: 0, wind: 1 };
     this._last = { amb: -1, rustle: -1, purr: -1 };
@@ -51,7 +56,33 @@ export class Sound {
     const plfo = ctx.createOscillator(); plfo.frequency.value = 25; const plg = ctx.createGain(); plg.gain.value = 0.5;
     plfo.connect(plg); plg.connect(pmod.gain); plfo.start();
     loopNoise().connect(plp); plp.connect(pmod); pmod.connect(this.purrAmp); this.purrAmp.connect(this.master);
+    this.hinge.attach(ctx, this.master);
     this.ready = true;
+  }
+
+  /**
+   * 合页这一帧的拟音。静音时不发一次性声音，持续层也收掉。
+   * @param {object} frame hinge-feel 的输出
+   * @param {number} dt
+   */
+  stepHinge(frame, dt) {
+    if (this.muted) {
+      if (!this._hingeHeld) { this._hingeHeld = true; this.hinge.quiet(); }
+      return;
+    }
+    this._hingeHeld = false;
+    let live = frame.creakGain > 0.0008 || frame.clickGain > 0.001 || frame.thunkCount > 0;
+    if (!live) {
+      for (let i = 0; i < frame.rustle.length; i++) if (frame.rustle[i].gain > 0.0008) live = true;
+    }
+    if (!live) {
+      if (!this._hingeIdle) { this._hingeIdle = true; this.hinge.quiet(); }
+      return;
+    }
+    this._hingeIdle = false;
+    if (frame.clickGain > 0.001) this.log('hinge-click');
+    for (let i = 0; i < frame.thunkCount; i++) this.log('thunk-' + frame.thunks[i].id);
+    this.hinge.apply(frame, dt);
   }
 
   /* ------------ 小工具 ------------ */

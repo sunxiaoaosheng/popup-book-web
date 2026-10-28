@@ -32,7 +32,7 @@ flowchart LR
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL` |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*` |
 | `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
 | `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
 | `frontend/js/share-draw.js` | 把排版画到画布 |
@@ -41,6 +41,8 @@ flowchart LR
 | `frontend/js/hinge-feel.js` | 角速度 → 嘎吱、纸声、轻撞、镜头偏移。纯函数 |
 | `frontend/js/hinge-audio.js` | 把上面的数字放进 WebAudio，接到主音量 |
 | `frontend/js/sim-feel.js` | 套到相机上，并在静音时把拟音让掉 |
+| `frontend/js/stage-show.js` | 开场幕布。角度 → 暗角、扫光、分层折纸。不判秘密 |
+| `frontend/js/stage-show-view.js` | 把幕布画到暗角和纸片上 |
 
 `S` 仍是运行时状态，`__popup.dbg()` 读的是同一份。状态机没有自己藏一份平行状态。
 

@@ -28,6 +28,7 @@
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
+| `frontend/js/stage-show.js` `stage-show-view.js` | 开场幕布。角度决定暗角和纸片折痕，不判秘密 |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
@@ -130,6 +131,12 @@
 - 镜头跟着速度有一点微晃、视差和视场呼吸，幅度有上限，并且是平滑的，不会晃得难受。左上角「手感」或 `K` 可以改成低、或关掉。选择会记住。
 - `M` 静音仍然关掉全部声音，包括这层拟音。关掉手感只停掉这层声音和镜头偏移，森林和猫咪的声音还在。
 - 数字在 `frontend/js/tuning.js` 的 `HINGE_FEEL`。真实合页和滑块走的是同一条曲线。
+
+## 二·十三、开场：合盖是幕布（不剧透版）
+
+- 这一档**第一次**把盖子打开，画面像幕布被盖子掀起来。合着的时候上下是暗的，中间留一道缝；再往上，纸地、松林、小屋还留着一点折痕。盖子**第一次过大约 90°**，一道暖光扫过全场，暗角松开，纸片按地面、树、小屋、窗台、小猫的顺序弹到位。
+- 同一档之后再翻开，只留很轻的一道。轻轻合上，幕布慢慢跟上；合得很快，幕布贴着盖子落下，并闪一下。手账里的小秘密没有新的一条，触发方式也没改。
+- 看过首演会记在存档里（`stageShown`）。清空手账，或地址加上 `?reset=1`，会再演一次整场。手感在 `frontend/js/tuning.js` 的 `stage*`。
 
 ## 三、运行
 

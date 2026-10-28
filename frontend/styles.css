@@ -8,6 +8,11 @@
   #caption{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:8;padding:6px 16px;border-radius:999px;
     background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:14px;letter-spacing:.08em;white-space:nowrap;
     transition:opacity .4s;}
+  #caption.mood{font-size:22px;padding:10px 22px;background:rgba(30,22,16,.88);letter-spacing:.14em}
+  #caption.greet{font-size:32px;padding:14px 28px;color:#ffe7b8;background:rgba(92,48,18,.92);
+    box-shadow:0 10px 28px rgba(0,0,0,.35)}
+  #caption.wake{font-size:28px;padding:12px 26px;color:#fff6e4;background:rgba(72,36,64,.92)}
+  #caption.sleep{font-size:26px;padding:12px 24px;color:#efe4ff;background:rgba(42,32,64,.92)}
   #hud{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9;width:min(680px,92vw);
     background:rgba(30,22,16,.72);backdrop-filter:blur(8px);border-radius:14px;padding:10px 16px 12px;
     box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:13px;}

@@ -29,6 +29,7 @@
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
 | `frontend/js/stage-show.js` `stage-show-view.js` | 开场幕布。角度决定暗角和纸片折痕，不判秘密 |
+| `frontend/js/kitten-memory.js` `kitten-mood.js` `kitten-lines.js` | 小猫的记性、心情、闲置小动作。纯逻辑，单测在 `tests/unit/kitten-mood.test.js`。画面在 `kitten-look.js`，存档订阅在 `kitten-wire.js` |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
@@ -159,7 +160,14 @@
 - 左上角还是「📖 小秘密 N/8」，按 `J` 打开。八个格子一开始是空白贴纸，不再把八条提示一起摊开。
 - 盖子停在某条秘密附近，或那一带你来回试过几次，格子才会先亮起一句「快了」。再试过几次，才写下原来那句含蓄提示。秘密什么时候算找到，规则没变。
 - 找到的那一张会揭开贴上去。八张都有了，会放一次集齐；之后打开贴纸本仍是集齐的样子，可以再看一次。进度写在原来的存档里。
-- 手感数字在 `frontend/js/tuning.js` 末尾的贴纸手账一节（`stickerBandPad`、`stickerAttemptsForHint` 等）。
+- 手感数字在 `frontend/js/tuning.js` 的 `TUNING`（`stickerBandPad`、`stickerAttemptsForHint` 等）。
+
+## 二·十六、小猫会记得你（不剧透版）
+
+- 记性写在原来的浏览器存档里。第一次见面、隔了几个小时、换了一天再打开，它打招呼的话不一样。刚刷新页面不会反复寒暄。
+- 心情会变：在它出来玩的角度停大约 9 秒，它会闭上眼、头上冒出很大的 Zzz；把盖子轻轻抖大约 1° 就伸个懒腰醒过来。四十五分钟里打开够三次，它会兴奋；二十分钟内被猛地合上过，它会把耳朵压平、脸红。手账仍是 8 条，秘密的触发角度没有改。
+- 醒着时眨眼、歪头、舔爪子会换着来，不会按同一个圈循环。偶尔冒出一句很短的话。这些话让路给秘密和换季字幕。落点没改，仍在门洞里和台阶之间的平地上。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.kitten`。
 
 ## 三、运行
 

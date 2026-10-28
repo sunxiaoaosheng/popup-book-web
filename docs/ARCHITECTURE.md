@@ -26,6 +26,8 @@ flowchart LR
 |---|---|
 | `frontend/js/play-machine.js` | 摇晃、猛开、停住、一整天、合盖。改 `S` 上的字段，发出事件 |
 | `frontend/js/kitten-machine.js` | 小猫这一拍是 `hidden` / `nap` / `dawn` / `play` |
+| `frontend/js/kitten-mood.js` | 记性带来的心情、打盹和叫醒、不循环的闲置动作。状态在 `S.kittenMood` |
+| `frontend/js/kitten-look.js` | 把心情画在眼睛和耳朵上，不改根节点位置 |
 | `frontend/js/season-machine.js` | 打开过程中的换季进度 |
 | `frontend/js/season-beats.js` | 春、冬的两句季节反应，不是秘密 |
 | `frontend/js/season-ritual.js` `sky-bands.js` | 换季锋面曲线、每季动机、天空时段权重。不引用 Three |
@@ -36,7 +38,8 @@ flowchart LR
 | `frontend/js/journal-watch.js` `journal-book.js` `sticker-art.js` | 每帧记进度；八格贴纸和集齐画面 |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*`，贴纸本在 `sticker*` |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*`，贴纸本在 `sticker*`，小猫心情在 `kitten` |
+| `frontend/js/kitten-memory.js` `kitten-lines.js` `kitten-wire.js` | 见面记录、闲话、把心情接到存档 |
 | `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
 | `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
 | `frontend/js/share-draw.js` | 把排版画到画布 |

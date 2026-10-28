@@ -1,5 +1,6 @@
 // 运行时状态。测试钩子 `__popup.S` 指向同一对象。
 import { Spring } from './math.js';
+import { createKittenMood } from './kitten-mood.js';
 
 export const MAX_ANGLE = 130;
 export const PW = 10;
@@ -36,9 +37,9 @@ export const S = {
   run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 },
   conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,
   dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0, seasonMorphSaid: false,
-  kittenMode: 'hidden', holdRing: -1, _heartOn: false,
+  kittenMode: 'hidden', kittenMood: createKittenMood(), holdRing: -1, _heartOn: false,
   beats: { springSaid: false, winterSaid: false, springT: 0 },
-  cap: '', capUntil: 0, kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
+  cap: '', capUntil: 0, moodCap: '', moodUntil: 0, moodKind: '', kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
   owlPend: 0, seamEye: 0, conBurst: 0, dawnStretch: 0, heartCd: 0, sneeze: 0, endMode: undefined,
   fx: 0, fy: 0, fz: 0,
 };

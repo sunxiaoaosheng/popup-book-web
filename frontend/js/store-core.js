@@ -1,10 +1,13 @@
 /**
  * 存档。不碰 localStorage：浏览器适配在 store.js，测试传入内存 read/write。
+ * 小猫的记性是里面的 kitten 字段，变换在 kitten-memory.js。
  */
 import { normalizeFeel } from './hinge-feel.js';
+import { blankKittenMemory, normalizeKittenMemory, pushVisit } from './kitten-memory.js';
 
 /** @typedef {{attempts:Record<string, number>, tiers:Record<string, number>, finaleSeen:boolean}} JournalProgress */
-/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, pets:number, opens:number, feel:string, stageShown:boolean, journal:JournalProgress}} SaveData */
+/** @typedef {import('./kitten-memory.js').KittenMemory} KittenMemory */
+/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, pets:number, opens:number, feel:string, stageShown:boolean, journal:JournalProgress, kitten:KittenMemory}} SaveData */
 /** @typedef {{read:() => (SaveData|null), write:(data:SaveData) => void}} StoreIO */
 /** @typedef {{id:string, attempt?:boolean, tier?:number}} JournalUpdate */
 
@@ -46,7 +49,7 @@ function loadJournal(src) {
 
 /** @returns {SaveData} */
 export function blankSave() {
-  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, pets: 0, opens: 0, feel: 'normal', stageShown: false, journal: blankJournal() };
+  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, pets: 0, opens: 0, feel: 'normal', stageShown: false, journal: blankJournal(), kitten: blankKittenMemory() };
 }
 
 /**
@@ -65,6 +68,7 @@ export function createStore(io, initial = null) {
     if (initial.secrets && typeof initial.secrets === 'object') data.secrets = { ...initial.secrets };
     if (initial.seasons && typeof initial.seasons === 'object') data.seasons = { .../** @type {Record<string, number>} */ (initial.seasons) };
     data.journal = loadJournal(/** @type {{ journal?: unknown }} */ (initial).journal);
+    data.kitten = normalizeKittenMemory(initial.kitten);
   }
   const save = () => io.write(data);
   save();
@@ -130,6 +134,24 @@ export function createStore(io, initial = null) {
       save();
       return true;
     },
+    kittenMemory() { return data.kitten; },
+    /** @param {number} now @param {number} [keep] @param {number} [gapMs] */
+    rememberVisit(now, keep = 8, gapMs = 8000) {
+      data.kitten = pushVisit(data.kitten, now, keep, gapMs);
+      save();
+      return data.kitten;
+    },
+    /** @param {number} now */
+    rememberSlam(now) {
+      data.kitten.slammedAt = now;
+      if (!data.kitten.seenAt || now > data.kitten.seenAt) data.kitten.seenAt = now;
+      save();
+    },
+    /** @param {number} now */
+    touchSeen(now) {
+      data.kitten.seenAt = now;
+      save();
+    },
     reset() {
       const fresh = blankSave();
       data.cycles = fresh.cycles;
@@ -141,6 +163,7 @@ export function createStore(io, initial = null) {
       data.opens = fresh.opens;
       data.stageShown = fresh.stageShown;
       data.journal = fresh.journal;
+      data.kitten = fresh.kitten;
       save();
     },
   };

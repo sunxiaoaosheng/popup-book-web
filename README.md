@@ -22,7 +22,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `frontend/` | 静态页。`index.html`、`styles.css`、`js/`（ES modules，不用打包） |
+| `frontend/` | 静态页。`index.html`、`styles.css`、`js/`（ES modules，不用打包）、`assets/icons/`（标题栏 / Apple Touch 用的圆形图标） |
 | `frontend/vendor/three.module.js` | Three.js r160，随仓库走，**离线可用** |
 | `frontend/js/story.js` | 数据：小秘密的名字/提示、四季设定与晚安台词 |
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |

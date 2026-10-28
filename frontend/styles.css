@@ -27,7 +27,9 @@
     background:rgba(20,14,10,.72);padding:4px 8px;border-radius:8px;pointer-events:none}
   #perf[hidden]{display:none}
   /* ---- v2：工具栏 / 手账 / toast / 进度环 / 晚安 ---- */
-  #tools{position:fixed;left:12px;top:12px;display:flex;gap:8px;z-index:5}
+  #tools{position:fixed;left:12px;top:12px;display:flex;gap:8px;z-index:5;flex-wrap:wrap;max-width:min(540px,72vw)}
+  #share{letter-spacing:.08em}
+  #shareclip[aria-pressed="true"]{color:#ffd48a;border-color:#f2a24a}
   #tools button.ghost{background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:13px}
   #journal{position:fixed;left:12px;top:52px;width:min(340px,86vw);max-height:70vh;overflow:auto;z-index:6;
     background:rgba(30,22,16,.88);backdrop-filter:blur(10px);border-radius:14px;padding:12px 16px;box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:13px;line-height:1.5}

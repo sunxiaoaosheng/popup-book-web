@@ -12,6 +12,7 @@ import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from '
 import { createInput } from './input.js';
 import { step } from './sim.js';
 import { attachDebug } from './debug.js';
+import { attachShare } from './share-wire.js';
 
 const params = new URLSearchParams(location.search);
 const stageEl = document.getElementById('stage');
@@ -40,6 +41,7 @@ W.setSeason(params.get('season') != null ? +params.get('season') : store.cycles 
 if (store.cycles === 0 && !store.seasonSeen(S.season)) store.markSeason(S.season);
 
 attachDebug(W, input);
+const share = attachShare(W);
 
 function isMoving() {
   return S.sp > 1.2 || Math.abs(S.hinge.v) > 0.5 || Math.abs(S.sunU.v) > 0.02 || S.flutT > 0 || S.burstT > 0 || S.slamT > 0;
@@ -62,6 +64,8 @@ function frame(now) {
   step(W, dt);
   W.gfx.requestShadow(dt, isMoving());
   W.gfx.renderer.render(W.gfx.scene, W.gfx.camera);
+  // 没在录短片时 sink 是 null，这里不读像素。
+  if (share.sink) share.sink(dt);
   input.maybeHud(dt);
   perf.acc += raw;
   perf.n += 1;

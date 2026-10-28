@@ -508,6 +508,11 @@ EOF
   local rc=0
   POPUP_BASE="http://127.0.0.1:${tport}/index.html" POPUP_WS=18665 POPUP_HTTP=18666 \
     "$PY" "$ROOT/tests/e2e/smoke.py" || rc=$?
+  if [[ "$rc" == 0 ]]; then
+    log "分享卡冒烟 http://127.0.0.1:${tport}/"
+    POPUP_BASE="http://127.0.0.1:${tport}/index.html" \
+      "$PY" "$ROOT/tests/e2e/share_card.py" || rc=$?
+  fi
   if [[ "$started" != 0 ]]; then kill "$started" 2>/dev/null || true; wait "$started" 2>/dev/null || true; fi
   if [[ "$rc" != 0 ]]; then die "冒烟失败（退出码 ${rc}）"; fi
   ok "lint、类型检查、单元测试、冒烟都过了"

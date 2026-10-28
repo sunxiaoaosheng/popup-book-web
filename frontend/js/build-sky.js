@@ -5,6 +5,7 @@ import { cut, box, polyShape, ellipseShape, paperGlow, addMat, makePine } from '
 import { PW, PH, FONT } from './state.js';
 import { SEASONS, SECRETS } from './story.js';
 import { buildMoon, buildStars, buildPaperSun, buildSunSlot, buildHorizon, buildConstellation } from './build-sky-bodies.js';
+import { CLOUD_RENDER_ORDER, CLOUD_Z } from './sky-order.js';
 
 export { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './sky-data.js';
 
@@ -181,6 +182,7 @@ export function buildSky(W) {
   cloudMesh.castShadow = false;
   cloudMesh.receiveShadow = true;
   cloudMesh.frustumCulled = false;
+  cloudMesh.renderOrder = CLOUD_RENDER_ORDER;
   backFace.add(cloudMesh);
   const cloudM = new THREE.Matrix4();
   const cloudP = new THREE.Vector3();
@@ -191,7 +193,7 @@ export function buildSky(W) {
     for (const c of clouds) {
       const ck = c.visible ? c.k : 0;
       for (const puff of c.puffs) {
-        cloudP.set(c.xNow + puff.dx * ck, c.y + puff.dy * ck, 0.08);
+        cloudP.set(c.xNow + puff.dx * ck, c.y + puff.dy * ck, CLOUD_Z);
         cloudS.set(puff.rx * ck, puff.ry * ck, ck || 0.0001);
         cloudM.compose(cloudP, cloudQ, cloudS);
         cloudMesh.setMatrixAt(i, cloudM);

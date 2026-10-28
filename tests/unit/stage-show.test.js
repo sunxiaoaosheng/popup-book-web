@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createStageShow, STAGE_LAYERS, stageBeat, stepStageShow } from '../../frontend/js/stage-show.js';
+import { appliedGain, createStageShow, STAGE_LAYERS, stageBeat, stepStageShow } from '../../frontend/js/stage-show.js';
+import { CLOUD_Z, cloudClearsSun, SUN_FRONT_Z } from '../../frontend/js/sky-order.js';
 import { blankSave, createStore } from '../../frontend/js/store-core.js';
 
 function frame(angle, extra = {}) {
@@ -167,6 +168,21 @@ test('a slam catches the curtain and flashes; a gentle close lags and warms with
   const midSlam = stepStageShow(createStageShow({ premiered: true }), frame(50, { speed: 200, dir: -1, closing: true, closeMax: 200 }));
   const midGentle = stepStageShow(createStageShow({ premiered: true }), frame(50, { speed: 20, dir: -1, closing: true, closeMax: 20 }));
   assert.ok(midGentle.layers.kitten < midSlam.layers.kitten - 0.15, `${midGentle.layers.kitten} vs ${midSlam.layers.kitten}`);
+});
+
+test('the curtain never moves the kitten or the sill it sits on', () => {
+  for (const id of ['cabin', 'pop', 'kitten']) {
+    assert.equal(appliedGain(id, 0.84), 1);
+    assert.equal(appliedGain(id, 1.14), 1);
+  }
+  assert.equal(appliedGain('ground', 0.9), 0.9);
+  assert.equal(appliedGain('trees', 1.05), 1.05);
+});
+
+test('clouds sit in front of the sun so the overlap does not z-fight', () => {
+  assert.equal(cloudClearsSun(), true);
+  assert.ok(CLOUD_Z > SUN_FRONT_Z);
+  assert.equal(cloudClearsSun(SUN_FRONT_Z), false);
 });
 
 test('stageShown is remembered and reset with the save', () => {

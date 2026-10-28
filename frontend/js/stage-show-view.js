@@ -3,7 +3,8 @@
  * 不决定「这一拍发生了什么」。弹簧仍由 sim-stage 先算完，这里只在它后面改姿态。
  */
 import * as THREE from '../vendor/three.module.js';
-import { lerp, sstep } from './math.js';
+import { lerp } from './math.js';
+import { appliedGain } from './stage-show.js';
 
 /**
  * @param {any} W
@@ -103,27 +104,20 @@ function setOp(el, value, cache, key) {
 /** @param {any} W @param {Record<string, number>} g */
 function poseLayers(W, g) {
   if (!g) return;
+  // 小屋、窗台、小猫的姿态留给弹簧和 kitten-place。这里再乘倍率会把脚抬离窗台。
+  const ground = appliedGain('ground', g.ground);
+  const trees = appliedGain('trees', g.trees);
   for (const t of W.terraces) {
-    const p = Math.min(1.08, Math.max(0, t.spr.x * g.ground));
+    const p = Math.min(1.08, Math.max(0, t.spr.x * ground));
     const r = -(1 - p) * Math.PI / 2;
     t.riser.rotation.x = r;
     t.top.rotation.x = r;
   }
-  const treeK = Math.min(1.08, g.trees);
+  const treeK = Math.min(1.08, trees);
   for (const t of W.trees) {
     if (t.phi == null) continue;
     t.g.rotation.x = Math.PI / 2 - t.phi * treeK;
   }
-  const cabinPhi = W.frame.cabinE * (Math.PI / 2) * Math.min(1.08, g.cabin);
-  W.cabin.rotation.x = Math.PI / 2 - cabinPhi;
-  const pop = Math.max(0.001, sstep(0.55, 0.95, W.frame.cabinE) * g.pop);
-  W.popG.scale.z = pop;
-  const kitten = W.kitten;
-  if (kitten) {
-    const k = g.kitten;
-    const drop = (1 - Math.min(k, 1)) * 0.7;
-    kitten.position.y -= drop;
-    kitten.scale.multiplyScalar(1 + 0.06 * (k - 1));
-  }
-  if (W.moon && g.sky < 0.999) W.moon.position.y *= lerp(0.88, 1, Math.min(1, g.sky));
+  const sky = appliedGain('sky', g.sky);
+  if (W.moon && sky < 0.999) W.moon.position.y *= lerp(0.88, 1, Math.min(1, sky));
 }

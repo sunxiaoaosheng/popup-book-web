@@ -13,6 +13,17 @@ import { TUNING } from './tuning.js';
 /** 弹起的顺序。越靠后越晚站直。 */
 export const STAGE_LAYERS = ['ground', 'trees', 'cabin', 'pop', 'kitten', 'sky'];
 
+/**
+ * 小猫的落点由 kitten-place 算好：脚在门洞地板、窗台或追萤火虫的平地上。
+ * cabin 托着身体，pop 里是窗台。幕布若再改这三层的姿态，脚就会离开落点。
+ */
+export const FIXED_LAYERS = new Set(['cabin', 'pop', 'kitten']);
+
+/** 画面实际采用的倍率。托着小猫的层永远是 1。 */
+export function appliedGain(id, gain) {
+  return FIXED_LAYERS.has(id) ? 1 : gain;
+}
+
 /** 每一层自己的角度窗，和书页上原来的折起区间对齐，只是首演时先留一截折痕。 */
 const LAYER_SPAN = {
   ground: [8, 26],

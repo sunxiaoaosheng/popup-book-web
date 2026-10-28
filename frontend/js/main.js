@@ -42,7 +42,9 @@ if (store.cycles === 0 && !store.seasonSeen(S.season)) store.markSeason(S.season
 attachDebug(W, input);
 
 function isMoving() {
-  return S.sp > 1.2 || Math.abs(S.hinge.v) > 0.5 || Math.abs(S.sunU.v) > 0.02 || S.flutT > 0 || S.burstT > 0 || S.slamT > 0;
+  const show = W.stageSnap;
+  const curtain = show && (show.sweepGlow > 0.03 || show.flash > 0.03 || show.bow > 0.04);
+  return curtain || S.sp > 1.2 || Math.abs(S.hinge.v) > 0.5 || Math.abs(S.sunU.v) > 0.02 || S.flutT > 0 || S.burstT > 0 || S.slamT > 0;
 }
 
 const perf = W.gfx.perf;

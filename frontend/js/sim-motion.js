@@ -1,5 +1,6 @@
 // 开合手感、摇晃/猛开、停住彩蛋、一整天。不碰网格。
 import { clamp, smooth, sstep } from './math.js';
+import { hopProgress } from './kitten-place.js';
 import { TUNING } from './tuning.js';
 import { heartTarget } from './rules.js';
 import { emitAll } from './bus.js';
@@ -48,7 +49,7 @@ export function stepMotion(W, dt) {
   S.shy = smooth(S.shy, shyTarget, dt, shyTarget ? 0.6 : 0.35);
   S.duck = smooth(S.duck, (S.shy > 0.4 && sp > 40) ? 1 : 0, dt, 0.25);
   F.peekP = S.peek.step(sstep(76, 90, A) * (1 - 0.55 * S.duck), dt);
-  F.hopP = S.hop.step(sstep(91 + 10 * S.shy, 100 + 12 * S.shy, A), dt);
+  F.hopP = S.hop.step(hopProgress(A, S.shy), dt);
   F.eggP = S.egg.step(heartTarget(A), dt);
   const kittenAwake = A > 76;
   const sleepWant = (S.lastDir < 0 && kittenAwake && F.eggP < 0.2 && T - S.lastShake > 3) ? 1 : 0;

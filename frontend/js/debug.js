@@ -116,10 +116,31 @@ export function attachDebug(W, input) {
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
+        stage: stageDbg(W),
         events: W.sound.events.slice(-14),
         trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
         net: { connects: W.net.connects, coalesced: W.net.coalesced, dropped: W.net.dropped, link: W.net.link },
       };
     },
+  };
+}
+
+/** @param {any} W */
+function stageDbg(W) {
+  const snap = W.stageSnap;
+  if (!snap) return null;
+  return {
+    beat: snap.beat,
+    mode: snap.mode,
+    vignette: +snap.vignette.toFixed(3),
+    slit: +snap.slit.toFixed(3),
+    dim: +snap.dim.toFixed(3),
+    sweep: +snap.sweepGlow.toFixed(3),
+    flash: +snap.flash.toFixed(3),
+    bow: +snap.bow.toFixed(3),
+    premiered: !!snap.premiered,
+    closeStyle: snap.closeStyle || '',
+    ground: +snap.layers.ground.toFixed(3),
+    kitten: +snap.layers.kitten.toFixed(3),
   };
 }

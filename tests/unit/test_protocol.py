@@ -22,6 +22,13 @@ class ProtocolTest(unittest.TestCase):
         again["unrelated"] = {"keep": True}
         self.assertEqual(again["angle"], 87.26)
 
+    def test_mode_is_optional(self):
+        plain = angle_frame(1, 1, 1)
+        self.assertNotIn("mode", plain)
+        self.assertEqual(angle_frame(1, 1, 1, "sensor")["mode"], "sensor")
+        self.assertEqual(heartbeat_frame(2, 3, "fake")["mode"], "fake")
+        self.assertNotIn("mode", heartbeat_frame(2, 3))
+
     def test_heartbeat_has_no_angle(self):
         beat = heartbeat_frame(4, 1000)
         self.assertEqual(beat["type"], "heartbeat")

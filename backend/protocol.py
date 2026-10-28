@@ -3,23 +3,29 @@
 PROTOCOL_VERSION = 1
 
 
-def angle_frame(seq, t_ms, angle):
-    return {
+def _with_mode(body, mode):
+    if mode:
+        body["mode"] = mode
+    return body
+
+
+def angle_frame(seq, t_ms, angle, mode=None):
+    return _with_mode({
         "v": PROTOCOL_VERSION,
         "seq": int(seq),
         "t": round(float(t_ms), 1),
         "type": "angle",
         "angle": round(float(angle), 2),
-    }
+    }, mode)
 
 
-def heartbeat_frame(seq, t_ms):
-    return {
+def heartbeat_frame(seq, t_ms, mode=None):
+    return _with_mode({
         "v": PROTOCOL_VERSION,
         "seq": int(seq),
         "t": round(float(t_ms), 1),
         "type": "heartbeat",
-    }
+    }, mode)
 
 
 def health_body(mode, clients, last_angle, last_angle_age_ms, seq, hz):

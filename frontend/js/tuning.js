@@ -39,4 +39,20 @@ export const TUNING = {
   /** 开着时换季：开盖进度把 SEASON.t 从 0 推到 1 的角度区间。 */
   seasonMorphLo: 22,
   seasonMorphHi: 65,
+
+  // ---- 贴纸手账：靠近才揭提示。下面这些不改秘密本身的触发。 ----
+  /** 邻近角度带比触发带每侧宽出的度数。 */
+  stickerBandPad: 7,
+  /** 离开邻近带再远这么多度，才算真正走开，避免边界抖动连算多次。 */
+  stickerBandHyst: 3,
+  /** 进过邻近带这么多次，才把含蓄提示写进贴纸格。 */
+  stickerAttemptsForHint: 3,
+  /** 摇晃来回够这么下、还没凑满秘密，算靠近。 */
+  stickerShakeAlmost: 2,
+  /** 角速度达到 fastAbove 的这个比例、又还没把猫头鹰惊飞，算靠近。 */
+  stickerOwlSpeedFrac: 0.72,
+  /** 合盖最大角速度低于 gentleBelow 乘这个数、又已经超过轻轻合上，算靠近晚安。 */
+  stickerGentleAlmost: 1.45,
+  /** 一整天：干净地开过这个角度、还没到终点，算靠近。 */
+  stickerDayAlmost: 88,
 };

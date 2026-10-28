@@ -30,6 +30,8 @@ flowchart LR
 | `frontend/js/season-beats.js` | 春、冬的两句季节反应，不是秘密 |
 | `frontend/js/bus.js` | 同步事件总线 |
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
+| `frontend/js/journal-hints.js` | 贴纸本的靠近、提示等级。不触发秘密 |
+| `frontend/js/journal-watch.js` `journal-book.js` `sticker-art.js` | 每帧记进度；八格贴纸和集齐画面 |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
 | `frontend/js/tuning.js` | 手感数字，唯一的一处 |

@@ -29,14 +29,51 @@
   /* ---- v2：工具栏 / 手账 / toast / 进度环 / 晚安 ---- */
   #tools{position:fixed;left:12px;top:12px;display:flex;gap:8px;z-index:5}
   #tools button.ghost{background:rgba(30,22,16,.55);backdrop-filter:blur(6px);font-size:13px}
-  #journal{position:fixed;left:12px;top:52px;width:min(340px,86vw);max-height:70vh;overflow:auto;z-index:6;
-    background:rgba(30,22,16,.88);backdrop-filter:blur(10px);border-radius:14px;padding:12px 16px;box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:13px;line-height:1.5}
+  #journal{position:fixed;left:12px;top:52px;width:min(420px,92vw);max-height:74vh;overflow:auto;z-index:6;
+    background:rgba(30,22,16,.88);backdrop-filter:blur(10px);border-radius:14px;padding:12px 14px 14px;box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:13px;line-height:1.45}
   #journal[hidden]{display:none}
   #journal h3{margin:0 0 8px;font-size:15px;color:#ffd48a} #journal h3 small{opacity:.7;font-weight:400;margin-left:6px}
-  #journal ul{list-style:none;margin:0;padding:0} #journal li{padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.12);opacity:.75}
-  #journal li.got{opacity:1} #journal li.got b{color:#ffd48a} #journal li span{opacity:.85}
+  #journal .done-banner{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;padding:6px 8px;border-radius:10px;background:rgba(242,162,74,.18);color:#ffd48a}
+  #journal .done-banner[hidden]{display:none}
+  #journal .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+  #journal .slot .paper{position:relative;width:78px;height:78px;margin:2px auto 0;border-radius:12px;background:rgba(255,244,220,.05);border:1.5px dashed rgba(255,228,190,.38)}
+  #journal .slot:nth-child(odd) .paper{transform:rotate(-2.2deg)} #journal .slot:nth-child(even) .paper{transform:rotate(1.8deg)}
+  #journal .slot .art{position:absolute;inset:0} #journal .stk-svg{width:100%;height:100%;display:block}
+  #journal .slot .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,228,190,.38)}
+  #journal .slot .num[hidden]{display:none}
+  #journal .slot .peel{display:none;position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,#f6e7c8 42%,#e4cfa6);transform-origin:100% 0}
+  #journal .slot b{display:block;text-align:center;margin-top:4px;font-size:12px}
+  #journal .slot .line{display:block;min-height:0;text-align:center;font-size:12px;opacity:.88}
+  #journal .slot.close .line,#journal .slot.hint .line,#journal .slot.got .line{min-height:2.6em}
+  #journal .slot.close .paper,#journal .slot.hint .paper{border-style:solid;border-color:rgba(255,212,138,.7);background:rgba(255,220,160,.08)}
+  #journal .slot.got b{color:#ffd48a}
+  #journal .slot.got .paper{background:linear-gradient(180deg,#fff8ea,#f3e0bc);border:0;box-shadow:0 3px 0 rgba(70,40,16,.25),0 8px 16px rgba(0,0,0,.18)}
+  #journal .slot.got .paper::after{content:"";position:absolute;top:-5px;left:16px;width:42px;height:11px;border-radius:1px;background:rgba(232,164,92,.92);transform:rotate(-4deg)}
+  #journal .slot.warm .paper{animation:stk-warm 1.6s ease-in-out infinite}
+  #journal .slot.stamping .peel{display:block;animation:stk-peel .72s ease forwards}
+  #journal .slot.stamping .art{animation:stk-stamp .55s cubic-bezier(.2,1.5,.3,1) both}
   #journal .foot{margin-top:10px;font-size:12px;opacity:.85} #journal .foot span{display:inline-block;margin:0 3px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.08);opacity:.45}
-  #journal .foot span.on{opacity:1;background:#f2a24a;color:#2a1a0e} #journal .foot button{margin-left:8px;font-size:11px;padding:2px 8px}
+  #journal .foot span.on{opacity:1;background:#f2a24a;color:#2a1a0e} #journal .foot span.plain{background:none;padding:0;opacity:.85}
+  #journal .foot button{margin-left:8px;font-size:11px;padding:2px 8px}
+  #stk-finale[hidden]{display:none}
+  #stk-finale{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(16,10,6,.62)}
+  #stk-finale .card{width:min(440px,92vw);background:rgba(36,24,16,.94);border-radius:18px;padding:22px 18px 16px;text-align:center;box-shadow:0 16px 50px rgba(0,0,0,.45)}
+  #stk-finale .t{font-size:26px;letter-spacing:.28em;text-indent:.28em;color:#ffe3a8}
+  #stk-finale .row{display:grid;grid-template-columns:repeat(4,72px);justify-content:center;gap:8px;margin:14px 0}
+  #stk-finale .mini{width:72px;height:72px;background:#fff6e4;border-radius:10px;box-shadow:0 3px 0 rgba(70,40,16,.25);animation:stk-pop .45s cubic-bezier(.2,1.4,.3,1) both}
+  #stk-finale .mini:nth-child(2){animation-delay:.06s} #stk-finale .mini:nth-child(3){animation-delay:.12s}
+  #stk-finale .mini:nth-child(4){animation-delay:.18s} #stk-finale .mini:nth-child(5){animation-delay:.24s}
+  #stk-finale .mini:nth-child(6){animation-delay:.3s} #stk-finale .mini:nth-child(7){animation-delay:.36s}
+  #stk-finale .mini:nth-child(8){animation-delay:.42s}
+  #stk-finale .stk-svg{width:100%;height:100%;display:block}
+  #stk-finale p{margin:0 0 12px;color:#fff1d6}
+  @keyframes stk-stamp{0%{transform:scale(1.45) rotate(-8deg);opacity:0}70%{transform:scale(.94) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes stk-peel{0%{transform:rotate(0);opacity:1}100%{transform:rotate(28deg) translate(18px,-16px);opacity:0}}
+  @keyframes stk-warm{0%,100%{box-shadow:0 0 0 1px rgba(255,212,138,.35)}50%{box-shadow:0 0 0 2px #ffd48a,0 0 14px rgba(255,180,80,.55)}}
+  @keyframes stk-pop{0%{transform:scale(1.35) rotate(-8deg);opacity:0}100%{transform:scale(1) rotate(-2deg);opacity:1}}
+  @media (prefers-reduced-motion:reduce){
+    #journal .slot.warm .paper,#journal .slot.stamping .peel,#journal .slot.stamping .art,#stk-finale .mini{animation:none}
+  }
   #toast{position:fixed;left:50%;top:62px;transform:translate(-50%,-12px);opacity:0;pointer-events:none;z-index:7;text-align:center;
     background:rgba(255,236,190,.95);color:#3a2412;padding:8px 18px;border-radius:14px;font-size:14px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.35);
     transition:opacity .35s,transform .35s} #toast.show{opacity:1;transform:translate(-50%,0)} #toast small{opacity:.8}

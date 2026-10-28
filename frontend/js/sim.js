@@ -8,4 +8,5 @@ export function step(W, dt) {
   stepStage(W, dt);
   stepKitten(W, dt);
   stepAmbient(W, dt);
+  if (W.watchJournal) W.watchJournal(dt);
 }

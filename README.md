@@ -14,7 +14,7 @@
 
 卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
 
-**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
+**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（贴纸本一开始是空的，靠近了才露出提示，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
 
 ## 一、文件
 
@@ -32,6 +32,7 @@
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
 | `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
+| `frontend/js/journal-hints.js` `journal-book.js` `journal-watch.js` `sticker-art.js` | 贴纸本：靠近才提示、八格手绘贴纸、揭开和集齐 |
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
 | `backend/bridge.py` | 选择适配器。`--fake` / `--replay` / 真实合页 |
 | `backend/broadcast.py` `backend/health.py` | 协议 v1 广播和 `GET /health` |
@@ -115,6 +116,13 @@
 - 远山的小松和云改成了实例绘制。折叠的近景树仍是各自的弹簧，因为猫头鹰停在其中一棵上，点树也要点到那一棵。
 - `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
 - 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
+
+## 二·十一、贴纸本（不剧透）
+
+- 左上角还是「📖 小秘密 N/8」，按 `J` 打开。八个格子一开始是空白贴纸，不再把八条提示一起摊开。
+- 盖子停在某条秘密附近，或那一带你来回试过几次，格子才会先亮起一句「快了」。再试过几次，才写下原来那句含蓄提示。秘密什么时候算找到，规则没变。
+- 找到的那一张会揭开贴上去。八张都有了，会放一次集齐；之后打开贴纸本仍是集齐的样子，可以再看一次。进度写在原来的存档里。
+- 手感数字在 `frontend/js/tuning.js` 末尾的贴纸手账一节（`stickerBandPad`、`stickerAttemptsForHint` 等）。
 
 ## 三、运行
 

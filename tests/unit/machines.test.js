@@ -75,13 +75,64 @@ test('dawn hold is not a secret and waits out a season morph', () => {
   S.hold.anchor = 45;
   const common = { dt: 0.05, angle: 45, speed: 0, cabinP: 1, peekP: 0, eggP: 0 };
   let events = [];
+  let ring = -1;
   for (let t = 0; t < 3; t += 0.05) {
     events = events.concat(stepHolds(S, { ...common, time: t, seasonMorphing: true }));
+    ring = Math.max(ring, S.holdRing);
   }
   assert.equal(events.filter((e) => e.type === 'dawn-line').length, 0);
-  assert.equal(S.dawnHeld, true);
+  assert.equal(events.some((e) => e.type === 'secret'), false);
+  assert.equal(S.dawnHeld, false);
+  assert.equal(S.hold.fired, false);
+  assert.equal(ring, -1);
   const again = stepHolds(S, { ...common, time: 4, seasonMorphing: false });
-  assert.equal(again.filter((e) => e.type === 'dawn-line').length, 0);
+  assert.equal(again.filter((e) => e.type === 'dawn-line').length, 1);
+  assert.equal(S.dawnSaid, true);
+  const repeat = stepHolds(S, { ...common, time: 5, seasonMorphing: false });
+  assert.equal(repeat.filter((e) => e.type === 'dawn-line').length, 0);
+  assert.equal(S.holdRing, -1);
+});
+
+test('a finished hold in a paying band always emits, and a stale dawn anchor does not eat nap', () => {
+  const frame = (S, angle, extra = {}) => stepHolds(S, {
+    dt: 1 / 60, time: 1, angle, speed: 0, cabinP: 1, peekP: 0, eggP: 0, seasonMorphing: false, ...extra,
+  });
+  const until = (S, angle, sec, extra = {}) => {
+    const ev = [];
+    for (let t = 0; t < sec; t += 1 / 60) ev.push(...frame(S, angle, extra));
+    return ev;
+  };
+
+  const seam = book();
+  assert.equal(until(seam, 8, 3.2).filter((e) => e.id === 'seam').length, 1);
+
+  const nap = book();
+  const napEv = until(nap, 60, 3.2, { seasonMorphing: true });
+  assert.equal(napEv.filter((e) => e.id === 'nap').length, 1);
+  assert.equal(napEv.some((e) => e.type === 'dawn-line'), false);
+
+  const chase = book();
+  assert.equal(until(chase, 115, 3.2).filter((e) => e.id === 'chase').length, 1);
+
+  const edge = book();
+  assert.equal(until(edge, 72, 3.2).some((e) => e.id === 'nap'), false);
+  const inside = book();
+  assert.equal(until(inside, 71, 3.2).filter((e) => e.id === 'nap').length, 1);
+
+  const heart = book();
+  const heartEv = until(heart, 90, 1.2, { eggP: 0.95 });
+  assert.equal(heartEv.filter((e) => e.id === 'heart').length, 1);
+  assert.equal(heart.holdRing, -1);
+
+  const stale = book();
+  stale.hold = { anchor: 58, t: 2.6, band: 'dawn', fired: false };
+  const moved = frame(stale, 60, { seasonMorphing: true });
+  assert.equal(moved.some((e) => e.type === 'secret'), false);
+  assert.equal(stale.hold.anchor, 60);
+  assert.equal(stale.hold.band, 'nap');
+  assert.ok(stale.hold.t < 0.05);
+  const caught = until(stale, 60, 3.2, { seasonMorphing: true });
+  assert.equal(caught.filter((e) => e.id === 'nap').length, 1);
 });
 
 test('heart secret is the rising edge at a right angle', () => {

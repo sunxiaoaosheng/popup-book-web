@@ -43,6 +43,8 @@ test('loads an existing save and reset clears it', () => {
   assert.equal(store.hasSecret('nap'), true);
   assert.equal(store.muted, true);
   assert.equal(store.feel, 'normal');
+  assert.equal(store.attemptCount('seam'), 0);
+  assert.equal(store.finalePlayed(), false);
   store.reset();
   assert.equal(store.cycles, 0);
   assert.equal(store.hasSecret('nap'), false);
@@ -56,4 +58,27 @@ test('a saved feel level comes back, and an unknown one falls back to normal', (
   assert.equal(kept.store.muted, false);
   const junk = memoryStore({ feel: 'max' });
   assert.equal(junk.store.feel, 'normal');
+});
+
+test('sticker progress sticks on the old save and reset clears it', () => {
+  const { store, dump } = memoryStore({
+    cycles: 2,
+    secrets: { seam: 5 },
+    journal: { attempts: { owl: 4 }, tiers: { owl: 9, nap: 1 }, finaleSeen: 1 },
+  });
+  assert.equal(store.hasSecret('seam'), true);
+  assert.equal(store.attemptCount('owl'), 4);
+  assert.equal(store.hintTier('owl'), 2);
+  assert.equal(store.hintTier('nap'), 1);
+  assert.equal(store.finalePlayed(), true);
+  assert.equal(store.applyJournal([{ id: 'heart', attempt: true, tier: 1 }]), true);
+  assert.equal(store.applyJournal([{ id: 'heart', tier: 1 }]), false);
+  assert.equal(store.attemptCount('heart'), 1);
+  assert.equal(store.hintTier('heart'), 1);
+  assert.equal(dump().journal.finaleSeen, true);
+  store.reset();
+  assert.equal(store.hasSecret('seam'), false);
+  assert.equal(store.attemptCount('owl'), 0);
+  assert.equal(store.hintTier('heart'), 0);
+  assert.equal(store.finalePlayed(), false);
 });

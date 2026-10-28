@@ -32,9 +32,11 @@ flowchart LR
 | `frontend/js/season-sweep.js` `sky-gradient.js` `season-light.js` `season-motif.js` | 扫场粒子、天空渐变、光色、现场合成的短动机 |
 | `frontend/js/bus.js` | 同步事件总线 |
 | `frontend/js/play-wire.js` | 订阅事件，调用声音、字幕、`discover` |
+| `frontend/js/journal-hints.js` | 贴纸本的靠近、提示等级。不触发秘密 |
+| `frontend/js/journal-watch.js` `journal-book.js` `sticker-art.js` | 每帧记进度；八格贴纸和集齐画面 |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*` |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*`，贴纸本在 `sticker*` |
 | `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
 | `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
 | `frontend/js/share-draw.js` | 把排版画到画布 |

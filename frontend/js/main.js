@@ -13,6 +13,7 @@ import { createInput } from './input.js';
 import { step } from './sim.js';
 import { attachDebug } from './debug.js';
 import { attachShare } from './share-wire.js';
+import { attachJournalWatch } from './journal-watch.js';
 
 const params = new URLSearchParams(location.search);
 const stageEl = document.getElementById('stage');
@@ -24,6 +25,7 @@ const ui = initUI({ SECRETS, SEASONS, store, sound });
 W.sound = sound;
 W.store = store;
 W.ui = ui;
+W.watchJournal = attachJournalWatch(W);
 bindActions(W);
 wirePlay(W);
 const perfPanel = createPerfPanel();

@@ -14,7 +14,7 @@
 
 卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
 
-**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
+**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（贴纸本一开始是空的，靠近了才露出提示，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
 
 ## 一、文件
 
@@ -33,8 +33,9 @@
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
-| `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
+| `frontend/js/ui.js` | DOM：音效按钮、手感、贴纸本、提示气泡、"别动"进度环、晚安结尾 |
 | `frontend/js/share-layout.js` `share-border.js` `share-draw.js` `share-capture.js` `share-wire.js` | 分享卡。排版和文案不碰画面；抓像素、下载、短片分开。没点分享时不读像素 |
+| `frontend/js/journal-hints.js` `journal-book.js` `journal-watch.js` `sticker-art.js` | 贴纸本：靠近才提示、八格手绘贴纸、揭开和集齐 |
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
 | `backend/bridge.py` | 选择适配器。`--fake` / `--replay` / 真实合页 |
 | `backend/broadcast.py` `backend/health.py` | 协议 v1 广播和 `GET /health` |
@@ -153,6 +154,13 @@
 
 天空按季节和时刻拉开：清晨、正午、黄昏、夜里的天顶、天边和光色都不一样。晨昏时天边再亮一档。树、道具、行头仍是原来的材质插值，换季不重建几何。手感数字在 `frontend/js/tuning.js` 的 `ritualBand` / `ritualParticles` / `ritualHaze` / `ritualMotifVol` / `ritualTwilight`。这不是新的小秘密，手账还是 8 条。
 
+## 二·十五、贴纸本（不剧透）
+
+- 左上角还是「📖 小秘密 N/8」，按 `J` 打开。八个格子一开始是空白贴纸，不再把八条提示一起摊开。
+- 盖子停在某条秘密附近，或那一带你来回试过几次，格子才会先亮起一句「快了」。再试过几次，才写下原来那句含蓄提示。秘密什么时候算找到，规则没变。
+- 找到的那一张会揭开贴上去。八张都有了，会放一次集齐；之后打开贴纸本仍是集齐的样子，可以再看一次。进度写在原来的存档里。
+- 手感数字在 `frontend/js/tuning.js` 末尾的贴纸手账一节（`stickerBandPad`、`stickerAttemptsForHint` 等）。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -234,7 +242,7 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 
 **不要双击 `frontend/index.html`（file://）**。ES module 会被拦，页面是黑的。
 
-快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 手账，`Esc` 关手账，`C` 分享今天的小屋。
+快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 贴纸本，`Esc` 关贴纸本或集齐画面，`C` 分享今天的小屋。
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?shareclip=1` 分享时一并录短片（默认不录）；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 

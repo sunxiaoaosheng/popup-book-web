@@ -1,7 +1,7 @@
 // 猫头鹰、天体、粒子、合盖结局、相机、声音和字幕。
 import { clamp, lerp, sstep } from './math.js';
 import { CAPTIONS } from './state.js';
-import { SEASONS, SECRETS } from './story.js';
+import { SEASONS } from './story.js';
 import { groundY } from './build-critters.js';
 import { noteCamPose } from './sim-feel.js';
 import { stepSeasonSweep } from './season-sweep.js';
@@ -181,12 +181,6 @@ export function stepAmbient(W, dt) {
   if (S.tod && !(T < S.capUntil)) ct = `${S.tod} · ${ct}`;
   if (T < S.capUntil) ct = S.cap;
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
-  S.nudgeT += dt;
-  if (S.nudgeT > 45 && A > 3 && W.store.foundCount() < SECRETS.length) {
-    S.nudgeT = 0;
-    const left = SECRETS.filter((s) => !W.store.hasSecret(s.id));
-    W.ui.nudge(left[(Math.random() * left.length) | 0].hint);
-  }
 }
 
 function stepParticles(W, dt, A) {

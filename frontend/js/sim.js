@@ -12,4 +12,5 @@ export function step(W, dt) {
   stepAmbient(W, dt);
   stepFeel(W, dt);
   stepStageCurtain(W, dt);
+  if (W.watchJournal) W.watchJournal(dt);
 }

@@ -39,4 +39,36 @@ export const TUNING = {
   /** 开着时换季：开盖进度把 SEASON.t 从 0 推到 1 的角度区间。 */
   seasonMorphLo: 22,
   seasonMorphHi: 65,
+
+  /**
+   * 开场幕布。数字只服务画面：暗角、光缝、分层纸片、约 90° 的一次亮灯。
+   * 不参与小秘密判定。首演看存档 stageShown；看过之后 stageSubtleMix 把幅度收小。
+   */
+  stagePremiereAt: 90,
+  /** 角度带到哪一拍。shut < stageShut ≤ seam < stageSeam ≤ … < stagePlay ≤ night。 */
+  stageShut: 12,
+  stageSeam: 28,
+  stageRise: 52,
+  stageHouse: 78,
+  stageLights: 98,
+  stagePlay: 114,
+  /** 首演里纸片在亮灯前先留一截折痕，亮灯时再一层层展平。 */
+  stageHold: 0.84,
+  /** 看过首演之后，开场目标只保留这么多（0 几乎看不出，1 和首演一样）。 */
+  stageSubtleMix: 0.24,
+  /** 亮灯那一道光扫过全场要多久。再次经过直角时用较短的那一档。 */
+  stageSweep: 0.92,
+  stageSweepSubtle: 0.4,
+  /** 分层弹起：每一层比上一层晚 stagePopGap 秒，自身用 stagePopDur 秒展平。 */
+  stagePopGap: 0.075,
+  stagePopDur: 0.3,
+  /** 展平时的过冲，纸片会略微超过站直再落回来。 */
+  stagePop: 0.14,
+  /** 合盖时暗角跟上盖子的快慢。轻轻合上拖得久，啪几乎贴着盖子。 */
+  stageGentleTau: 0.7,
+  stageSlamTau: 0.08,
+  stageNormalTau: 0.34,
+  stageOpenTau: 0.22,
+  /** 啪地合上时白闪的峰值。 */
+  stageFlash: 0.7,
 };

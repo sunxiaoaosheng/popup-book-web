@@ -53,3 +53,14 @@
   #ending .t{font-size:clamp(26px,3.6vw,40px);letter-spacing:.4em;text-indent:.4em;color:#ffe3a8;text-shadow:0 0 28px rgba(255,200,110,.55)}
   #ending .l{margin-top:8px;font-size:clamp(15px,2.2vw,20px);color:#fff1d6;max-width:80vw;line-height:1.7}
   #ending .n{margin-top:10px;font-size:13px;opacity:.7;letter-spacing:.12em}
+  /* 开场幕布。跟在暗角后面、界面前面，不接指针。 */
+  #stage-curtain,#stage-crease,#stage-sweep,#stage-warm,#stage-flash{position:fixed;inset:0;pointer-events:none}
+  #stage-curtain{opacity:0;
+    background:linear-gradient(to bottom,#120e0b 0%,#120e0b var(--slit-a,46%),rgba(18,14,11,0) calc(var(--slit-a,46%) + 5%),rgba(18,14,11,0) calc(var(--slit-b,54%) - 5%),#120e0b var(--slit-b,54%),#120e0b 100%)}
+  #stage-crease{opacity:0;mix-blend-mode:multiply;
+    background:linear-gradient(to bottom,rgba(40,24,12,0) 18%,rgba(50,28,14,.28) 50%,rgba(40,24,12,0) 82%),
+      repeating-linear-gradient(to bottom,rgba(70,42,20,.16) 0 1px,transparent 1px 18px)}
+  #stage-sweep{inset:auto;top:-12%;bottom:-12%;width:26%;opacity:0;mix-blend-mode:screen;
+    background:linear-gradient(90deg,transparent,rgba(255,236,196,.72),transparent);transform:translateX(-40vw)}
+  #stage-warm{opacity:0;background:radial-gradient(ellipse at 50% 58%,rgba(255,214,160,.5),rgba(90,48,16,0) 68%)}
+  #stage-flash{opacity:0;background:#fff6ea}

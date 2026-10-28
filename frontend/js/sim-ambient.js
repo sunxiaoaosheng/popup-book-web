@@ -5,6 +5,7 @@ import { SEASONS, SECRETS } from './story.js';
 import { emitAll } from './bus.js';
 import { stepClose } from './play-machine.js';
 import { groundY } from './build-critters.js';
+import { noteCamPose } from './sim-feel.js';
 
 const caption = document.getElementById('caption');
 let lastCap = '';
@@ -167,6 +168,7 @@ export function stepAmbient(W, dt) {
   const dir = v2.set(0, lerp(12.5, 4.0, cb), lerp(8.4, 13.6, cb)).multiplyScalar(fit);
   W.camera.position.copy(tgt).add(dir);
   W.camera.lookAt(tgt);
+  noteCamPose(W, W.camera.position, tgt);
 
   W.sound.setEnv({ amb: sstep(10, 50, A), night: nightP, season: S.season, speed: S.vel, wind: 1 + F.flut }, dt);
   W.sound.tick(dt);

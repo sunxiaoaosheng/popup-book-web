@@ -1,5 +1,6 @@
 // 自动化测试用的 window.__popup。字段在 v6 的基础上多了 net.dropped 和 net.link。
 import { Sound } from './audio.js';
+import { createFeelState, stepHingeFeel } from './hinge-feel.js';
 import { lerp } from './math.js';
 import { step } from './sim.js';
 
@@ -48,6 +49,11 @@ export function attachDebug(W, input) {
     await render('shake', (s) => s.shake(0));
     await render('thud', (s) => s.thud());
     await render('lullaby', (s) => s.lullaby(3));
+    const st = createFeelState();
+    stepHingeFeel(st, { angle: 70, speed: 0, dt: 0.016, time: 0, level: 'normal' });
+    const loud = stepHingeFeel(st, { angle: 100, speed: 100, dt: 0.05, time: 0.2, level: 'normal' });
+    await render('hinge-foley', (s) => { s.stepHinge(loud, 0.2); });
+    await render('hinge-muted', (s) => { s.setMuted(true); s.stepHinge(loud, 0.2); });
     return res;
   }
 
@@ -116,6 +122,13 @@ export function attachDebug(W, input) {
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
+        feel: W.store.feel,
+        camFov: +W.camera.fov.toFixed(3),
+        hinge: W.feelState ? {
+          creak: +W.feelState.out.creakGain.toFixed(3),
+          fov: +W.feelState.out.fov.toFixed(3),
+          shake: +Math.hypot(W.feelState.out.shakeX, W.feelState.out.shakeY).toFixed(4),
+        } : null,
         events: W.sound.events.slice(-14),
         trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
         net: { connects: W.net.connects, coalesced: W.net.coalesced, dropped: W.net.dropped, link: W.net.link },

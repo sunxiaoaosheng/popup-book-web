@@ -30,6 +30,7 @@
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
+| `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
 | `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
 | `frontend/js/share-layout.js` `share-border.js` `share-draw.js` `share-capture.js` `share-wire.js` | 分享卡。排版和文案不碰画面；抓像素、下载、短片分开。没点分享时不读像素 |
@@ -123,6 +124,13 @@
 
 没点分享时，主循环只看有没有在录短片，不去读像素，也不打开 `preserveDrawingBuffer`。面板被 `H` 藏起来之后，`C` 仍然可以分享。
 
+## 二·十二、动手感（不剧透版）
+
+- 盖子转得越快，铰链越嘎吱，纸页的沙沙也越满。经过直角、开到头、合严，各有一下很轻的撞击。慢到几乎不动时这些声音会歇下来。
+- 镜头跟着速度有一点微晃、视差和视场呼吸，幅度有上限，并且是平滑的，不会晃得难受。左上角「手感」或 `K` 可以改成低、或关掉。选择会记住。
+- `M` 静音仍然关掉全部声音，包括这层拟音。关掉手感只停掉这层声音和镜头偏移，森林和猫咪的声音还在。
+- 数字在 `frontend/js/tuning.js` 的 `HINGE_FEEL`。真实合页和滑块走的是同一条曲线。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -204,7 +212,7 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 
 **不要双击 `frontend/index.html`（file://）**。ES module 会被拦，页面是黑的。
 
-快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`J` 手账，`Esc` 关手账，`C` 分享今天的小屋。
+快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 手账，`Esc` 关手账，`C` 分享今天的小屋。
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?shareclip=1` 分享时一并录短片（默认不录）；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 

@@ -1,6 +1,12 @@
 """
 薄广播：从一个 AngleSource 读角度，按协议 v1 推给所有 WebSocket 客户端，并维护 /health。
 平滑、偏移、钳位在这里做，适配器只提供原始角度。
+
+旁边的可选字段都不改角度，读失败就省略，也不打断广播：
+- light：适配器的 read_light()
+- weight：角度源自己有 read_weight 就用它（回放），否则尝试 Force Touch
+- tap：适配器 pull_taps() 里已经分好类的轻拍，另发一帧
+网页发来的触控板轻点在 haptic.py。不认识的文本丢掉，连接不断。
 """
 
 import asyncio
@@ -13,6 +19,7 @@ from health import Status, serve_health
 from netbind import loopback_hosts
 from protocol import angle_frame, heartbeat_frame, tap_frames_from
 from sensors.ambient import read_source_light
+from sensors.force import WeightGate, open_weight
 
 try:
     import websockets
@@ -49,8 +56,31 @@ def serve(source, args):
         source.close()
 
 
+def _frame_weight(port, gate, now):
+    try:
+        sample = port.read()
+    except Exception:
+        return None
+    try:
+        return gate.update(sample, now)
+    except Exception:
+        return None
+
+
 async def _run(source, args):
     status = Status(source.mode, args.hz)
+    weight_port = open_weight(source)
+    weight_gate = WeightGate()
+    try:
+        return await _loop(source, args, status, weight_port, weight_gate)
+    finally:
+        try:
+            weight_port.close()
+        except Exception:
+            pass
+
+
+async def _loop(source, args, status, weight_port, weight_gate):
     if serve_health(args.host, args.http_port, status) is None:
         return 1
 
@@ -128,13 +158,20 @@ async def _run(source, args):
                     a = smoothed
                 a = max(0.0, min(args.clamp, a))
                 seq += 1
-                frame = angle_frame(seq, t_ms(), a, source.mode, read_source_light(source))
+                w = _frame_weight(weight_port, weight_gate, now)
+                frame = angle_frame(
+                    seq, t_ms(), a, source.mode,
+                    light=read_source_light(source),
+                    weight=w,
+                )
                 broadcast(json.dumps(frame))
                 status.note_angle(a, seq)
                 if time.time() - last_print > 1.0:
                     extra = ""
                     if "light" in frame:
-                        extra = f"  light {frame['light']:.0f} lx"
+                        extra += f"  light {frame['light']:.0f} lx"
+                    if "weight" in frame:
+                        extra += f"  weight {frame['weight']:.2f}"
                     print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f}){extra}", end="\r", flush=True)
                     last_print = time.time()
             seq = _send_taps(source, seq, t_ms, broadcast, status)

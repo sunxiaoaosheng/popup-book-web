@@ -9,6 +9,7 @@ import { bindActions } from './actions.js';
 import { wirePlay } from './play-wire.js';
 import { wireKitten } from './kitten-wire.js';
 import { wireTap } from './tap-wire.js';
+import { wireTrackWeight } from './track-weight-wire.js';
 import { createPerfPanel } from './perf-panel.js';
 import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
@@ -35,6 +36,7 @@ bindActions(W);
 wirePlay(W);
 wireKitten(W);
 wireTap(W);
+wireTrackWeight(W);
 const perfPanel = createPerfPanel();
 
 W.ambient = createAmbientClock();

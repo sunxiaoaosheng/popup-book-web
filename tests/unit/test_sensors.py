@@ -85,6 +85,32 @@ class SensorTest(unittest.TestCase):
             ReplaySource(path, clock=_Clock())
         os.remove(path)
 
+    def test_replay_weight_is_optional(self):
+        fd, path = tempfile.mkstemp(suffix=".jsonl")
+        os.write(
+            fd,
+            b'{"t": 0, "angle": 10}\n'
+            b'{"t": 1, "angle": 40, "weight": 0.5}\n'
+            b'{"t": 2, "angle": 90, "weight": "nope"}\n'
+            b'{"t": 3, "angle": 12, "weight": 0}\n',
+        )
+        os.close(fd)
+        clock = _Clock()
+        src = ReplaySource(path, clock=clock)
+        self.assertEqual(src.read(), 10)
+        self.assertIsNone(src.read_weight())
+        clock.t = 1
+        self.assertEqual(src.read(), 40)
+        self.assertEqual(src.read_weight(), 0.5)
+        clock.t = 2
+        self.assertEqual(src.read(), 90)
+        self.assertIsNone(src.read_weight())
+        clock.t = 3
+        self.assertEqual(src.read(), 12)
+        self.assertEqual(src.read_weight(), 0.0)
+        src.close()
+        os.remove(path)
+
     def test_empty_replay_is_refused(self):
         fd, path = tempfile.mkstemp(suffix=".jsonl")
         os.close(fd)
@@ -100,7 +126,7 @@ class SensorTest(unittest.TestCase):
             clock = _Clock()
             src = FakeSource(period=28.0, clock=clock)
             self.assertAlmostEqual(src.read_light(), 0.0)
-            frame = angle_frame(1, 0, src.read(), src.mode, src.read_light())
+            frame = angle_frame(1, 0, src.read(), src.mode, light=src.read_light())
             self.assertEqual(frame["light"], 0.0)
             clock.t = 14.0
             self.assertAlmostEqual(src.read_light(), 900.0)

@@ -37,7 +37,7 @@
 
 ```json
 {"t": 0.4, "kind": "slap", "strength": 0.3}
-{"t": 1.2, "angle": 40, "kind": "double-knock", "strength": 0.5, "light": 42}
+{"t": 1.2, "angle": 40, "kind": "double-knock", "strength": 0.5, "light": 42, "weight": 0.4}
 ```
 
 `kind` 只能是 `slap`、`double-knock`、`triple-knock`。
@@ -50,6 +50,19 @@
 
 1. 在 `backend/sensors/` 里实现上面的成员。`read_light` 可以先不写。
 2. `bridge.py` 的 `build_source()` 里加一个开关，把它交给 `serve()`。
-3. 角度帧保持 v1，可选字段只有 `light`（见 `docs/PROTOCOL.md`）。轻拍是另加的 `type: "tap"`（`kind` + `strength`），不要在适配器里塞波形。除此以外不要改字段，除非升版本。
+3. 角度帧保持 v1。可选字段是 `light` 和 `weight`（见 `docs/PROTOCOL.md`）。轻拍是另加的 `type: "tap"`（`kind` + `strength`）。网页还可以请桥做一下触控板轻点（`type: "haptic"`）。不要在适配器里塞波形。除此以外不要改字段，除非升版本。
 
-`/health` 和 WebSocket 的端口、帧格式保持不变。
+`/health` 和 WebSocket 的端口、帧格式保持不变。角度字段保持不变。
+
+## 力度不是角度适配器
+
+Force Touch 不实现上面的四个成员，也不能拿来替换合页。它是广播旁边的一条可选读数：
+
+| 来源 | 行为 |
+|---|---|
+| 角度源实现了 `read_weight()` | 广播用它。回放文件里的可选 `"weight"` 走这里。没有这个键时返回 `None` |
+| 否则 | macOS 上尝试触控板，放在单独的子进程里。失败、退出、或不是 macOS：`read()` 为 `None` |
+
+`None` 表示这一拍不写 `weight`。网页把缺字段当成「没有力度通道」，不会把小猫卡在闻东西的姿势上，也不会弹出错误。`0` 才表示板子是空的。
+
+合页的 `read()` 仍然只返回角度。

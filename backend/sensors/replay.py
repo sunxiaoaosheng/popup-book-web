@@ -1,6 +1,8 @@
 """按时间轴重放角度。一行一个 JSON：{"t": 秒, "angle": 度}，t 从 0 递增。
 
 可另写 "light"（勒克斯）。没有或不是有限数字时，这一行不带环境光。
+可选 "weight"（0..1 的静置力度）。没有这个键时 read_weight() 返回 None，
+广播就省略字段，不会把旧的回放当成空板。
 可选的轻拍写在同一行或单独一行：{"t": 秒, "kind": "slap", "strength": 0.3}。
 kind 是 slap / double-knock / triple-knock。波形字段即使出现也不保存。
 """
@@ -9,6 +11,15 @@ import json
 
 from protocol import TAP_KINDS, optional_light
 from sensors.base import AngleSource
+
+
+def _row_weight(obj):
+    if "weight" not in obj or obj["weight"] is None:
+        return None
+    try:
+        return float(obj["weight"])
+    except (TypeError, ValueError):
+        return None
 
 
 class ReplaySource(AngleSource):
@@ -29,7 +40,7 @@ class ReplaySource(AngleSource):
                 t = float(obj["t"])
                 if "angle" in obj:
                     light = optional_light(obj.get("light"))
-                    self._rows.append((t, float(obj["angle"]), light))
+                    self._rows.append((t, float(obj["angle"]), light, _row_weight(obj)))
                 if "kind" in obj:
                     kind = obj["kind"]
                     if kind not in TAP_KINDS:
@@ -61,6 +72,12 @@ class ReplaySource(AngleSource):
         if not self._rows:
             return None
         return self._rows[self._i][2]
+
+    def read_weight(self):
+        """跟最近一次 read() 同一行。没有 weight 键时是 None，不是 0。"""
+        if not self._rows:
+            return None
+        return self._rows[self._i][3]
 
     def pull_taps(self):
         elapsed = self._clock() - self._t0

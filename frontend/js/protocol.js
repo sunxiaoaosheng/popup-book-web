@@ -1,6 +1,8 @@
 /**
  * 合页角度流，协议版本 1。纯解析，不碰 WebSocket。
- * 字段说明见 docs/PROTOCOL.md。未知字段忽略；旧的 {"angle": n} 仍接受。
+ * 字段说明见 docs/PROTOCOL.md。未知字段忽略。
+ * 可选 light、weight 缺着就是 null，不改角度。轻拍是单独的 tap 帧。
+ * 旧的 {"angle": n} 仍接受。
  */
 
 export const PROTOCOL_VERSION = 1;
@@ -18,6 +20,7 @@ export const STALE_MS = 1500;
  * @property {boolean} legacy
  * @property {string} mode 桥的模式；旧帧为空串
  * @property {number|null} [light] 勒克斯。没有这个字段、或不是有限数字时为 null。0 是夜里，不是缺失。轻拍帧不带。
+ * @property {number|null} [weight] 可选的归一化静置力度。缺省、非法都是 null，不是 0。轻拍帧不带。
  * @property {string} [kind] 轻拍的种类。角度帧没有这个字段
  * @property {number} [strength] 轻拍力度 0–1。不带波形
  */
@@ -44,9 +47,10 @@ export function parseAngleMessage(raw) {
   const legacy = obj.v == null && obj.seq == null && obj.t == null && obj.type == null;
   const mode = typeof obj.mode === 'string' ? obj.mode : '';
   const light = readLight(obj.light);
+  const weight = readWeight(obj);
 
   if (declared === 'heartbeat') {
-    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode, light };
+    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode, light, weight };
   }
   if (declared === 'tap') {
     const kind = typeof obj.kind === 'string' ? obj.kind : '';
@@ -57,7 +61,7 @@ export function parseAngleMessage(raw) {
   }
   if (declared === 'angle' || (declared === '' && angleOk) || (declared !== '' && declared !== 'angle' && angleOk)) {
     if (!angleOk) return null;
-    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode, light };
+    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode, light, weight };
   }
   return null;
 }
@@ -66,6 +70,14 @@ export function parseAngleMessage(raw) {
 function readLight(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return value < 0 ? 0 : value;
+}
+
+/** 缺字段或不是有限数字 → null。0 是空板，要留下来。 */
+function readWeight(obj) {
+  if (!Object.prototype.hasOwnProperty.call(obj, 'weight')) return null;
+  const w = obj.weight;
+  if (typeof w !== 'number' || !Number.isFinite(w)) return null;
+  return w;
 }
 
 /**

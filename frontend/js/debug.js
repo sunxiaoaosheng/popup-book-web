@@ -84,6 +84,7 @@ export function attachDebug(W, input) {
 
   /** @type {any} */ (window).__popup = {
     setAngle: input.setAngle,
+    setWeight: input.setWeight,
     S,
     store: W.store,
     sound: W.sound,
@@ -174,6 +175,12 @@ export function attachDebug(W, input) {
           fov: +W.feelState.out.fov.toFixed(3),
           shake: +Math.hypot(W.feelState.out.shakeX, W.feelState.out.shakeY).toFixed(4),
         } : null,
+        track: {
+          phase: S.track.phase,
+          gift: +S.track.gift.toFixed(2),
+          sniff: +S.track.sniff.toFixed(2),
+          recover: +S.track.recover.toFixed(2),
+        },
         stage: stageDbg(W),
         events: W.sound.events.slice(-14),
         trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),

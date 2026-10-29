@@ -1,6 +1,7 @@
 """合页角度流 v1 的编码。解析在网页 frontend/js/protocol.js，两边的字段名以 docs/PROTOCOL.md 为准。
 
-角度帧可以多一个可选的 light（勒克斯）。没有就不写这个字段。版本仍是 1。
+角度帧可以多带可选的 light（勒克斯）和 weight（归一化静置力度）。没有就不写。
+轻拍是单独的 tap 帧。网页发给桥的触控板轻点在 haptic.py，不进角度帧。版本仍是 1。
 """
 import math
 
@@ -25,7 +26,25 @@ def _with_mode(body, mode):
     return body
 
 
-def angle_frame(seq, t_ms, angle, mode=None, light=None):
+def _optional_weight(weight):
+    """归一化静置力度。None 表示这一帧不带该字段。非法值也省略，不当成 0。"""
+    if weight is None:
+        return None
+    try:
+        w = float(weight)
+    except (TypeError, ValueError):
+        return None
+    if w != w or w == float("inf") or w == float("-inf"):
+        return None
+    if w < 0.0:
+        w = 0.0
+    if w > 1.0:
+        w = 1.0
+    return round(w, 2)
+
+
+def angle_frame(seq, t_ms, angle, mode=None, *, light=None, weight=None):
+    """角度帧。light 和 weight 只能用关键字，避免两个可选字段抢同一个位置。"""
     body = {
         "v": PROTOCOL_VERSION,
         "seq": int(seq),
@@ -36,6 +55,9 @@ def angle_frame(seq, t_ms, angle, mode=None, light=None):
     lx = optional_light(light)
     if lx is not None:
         body["light"] = round(lx, 1)
+    w = _optional_weight(weight)
+    if w is not None:
+        body["weight"] = w
     return _with_mode(body, mode)
 
 

@@ -4,6 +4,30 @@ import { createFeelState, stepHingeFeel } from './hinge-feel.js';
 import { lerp } from './math.js';
 import { step } from './sim.js';
 import { ritualFront, ritualIntensity, ritualKind } from './season-ritual.js';
+import { eyeReadGain } from './eye-read.js';
+
+function packEye(g) {
+  if (!g) return null;
+  const halo = g.userData && g.userData.halo;
+  return {
+    sx: +g.scale.x.toFixed(3),
+    sy: +g.scale.y.toFixed(3),
+    z: +g.position.z.toFixed(3),
+    tilt: +g.rotation.x.toFixed(3),
+    rim: halo ? +halo.material.opacity.toFixed(3) : 0,
+  };
+}
+
+/** 合页上核对用：小猫左眼和缝里的左眼。 */
+function eyeSample(W) {
+  const seam = W.seamEyes && W.seamEyes.userData.eyes && W.seamEyes.userData.eyes[0];
+  return {
+    kitten: packEye(W.K && W.K.eyes && W.K.eyes[0]),
+    kittenOn: !!(W.kitten && W.kitten.visible),
+    seam: packEye(seam && seam.g),
+    seamOn: !!(W.seamEyes && W.seamEyes.visible),
+  };
+}
 
 export function attachDebug(W, input) {
   const { S } = W;
@@ -107,6 +131,8 @@ export function attachDebug(W, input) {
         napP: +S.napP.toFixed(2), chaseP: +S.chaseP.toFixed(2), flutT: +S.flutT.toFixed(2),
         burstT: +S.burstT.toFixed(2), owl: W.O.state, owlVisible: W.owl.visible, kittenVisible: W.kitten.visible,
         act: { ...S.act }, seamEye: +(S.seamEye || 0).toFixed(2),
+        eyeRead: +eyeReadGain(S.filtered).toFixed(2),
+        eyes: eyeSample(W),
         holdT: +S.hold.t.toFixed(2), holdBand: S.hold.band, found: W.store.foundCount(), cycles: W.store.cycles,
         petE: +S.petE.toFixed(2), ending: S.endMode,
         sunU: +S.dayU.toFixed(3), sunVisible: W.paperSun.visible,

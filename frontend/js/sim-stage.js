@@ -6,6 +6,7 @@ import { emitAll } from './bus.js';
 import { stepSeason } from './season-machine.js';
 import { SUN_ARC, sunAt, TIMES } from './build-sky.js';
 import { applySeasonLight } from './season-light.js';
+import { applyEyeRead } from './eye-read.js';
 
 const glassOff = new THREE.Color('#7f8f9a');
 const glassOn = new THREE.Color('#ffd37a');
@@ -60,7 +61,11 @@ export function stepStage(W, dt) {
       e.ir.position.set(lx * 0.035, ly * 0.04, 0.001);
       e.pu.position.set(lx * 0.05, ly * 0.05, 0.002);
       e.hl.position.set(0.04 + lx * 0.03, 0.07 + ly * 0.03, 0.003);
-      for (const c of e.g.children) c.material.opacity = S.seamEye;
+      for (const c of e.g.children) {
+        if (c === e.g.userData.halo) continue;
+        c.material.opacity = S.seamEye;
+      }
+      applyEyeRead(e.g, A, { fade: S.seamEye });
     }
   }
 

@@ -1,10 +1,10 @@
 // 猫头鹰、天体、粒子、合盖结局、相机、声音和字幕。
 import { clamp, lerp, sstep } from './math.js';
 import { CAPTIONS } from './state.js';
-import { SEASONS, SECRETS } from './story.js';
-import { emitAll } from './bus.js';
-import { stepClose } from './play-machine.js';
+import { SEASONS } from './story.js';
 import { groundY } from './build-critters.js';
+import { noteCamPose } from './sim-feel.js';
+import { stepSeasonSweep } from './season-sweep.js';
 
 const caption = document.getElementById('caption');
 let lastCap = '';
@@ -154,8 +154,8 @@ export function stepAmbient(W, dt) {
   }
 
   if (W.partSeason >= 0) stepParticles(W, dt, A);
+  stepSeasonSweep(W);
 
-  emitAll(W.bus, stepClose(S, { angle: A, speed: S.sp }));
   if (A > 9) W.ui.hideEnding();
   S.slamT = Math.max(0, S.slamT - dt * 0.8);
   W.book.position.y = S.slamT > 0 ? 0.04 * Math.sin(S.slamT * 40) * S.slamT : 0;
@@ -167,6 +167,7 @@ export function stepAmbient(W, dt) {
   const dir = v2.set(0, lerp(12.5, 4.0, cb), lerp(8.4, 13.6, cb)).multiplyScalar(fit);
   W.camera.position.copy(tgt).add(dir);
   W.camera.lookAt(tgt);
+  noteCamPose(W, W.camera.position, tgt);
 
   W.sound.setEnv({ amb: sstep(10, 50, A), night: nightP, season: S.season, speed: S.vel, wind: 1 + F.flut }, dt);
   W.sound.tick(dt);
@@ -177,14 +178,22 @@ export function stepAmbient(W, dt) {
   if (A > 70 && !S.act.nap && !S.act.chase && S.shy < 0.5 && F.cabinE > 0.9) {
     ct = ct + `  ·  ${SEASONS[W.SEASON.t < 0.5 ? W.SEASON.from : W.SEASON.to].blurb}`;
   }
-  if (S.tod && !(T < S.capUntil)) ct = `${S.tod} · ${ct}`;
-  if (T < S.capUntil) ct = S.cap;
+  const storyOn = T < S.capUntil;
+  if (S.tod && !storyOn) ct = `${S.tod} · ${ct}`;
+  let moodKind = '';
+  if (storyOn) ct = S.cap;
+  else if (S.moodCap && T < S.moodUntil) {
+    ct = S.moodCap;
+    moodKind = S.moodKind || 'line';
+  }
   if (ct !== lastCap) { caption.textContent = ct; lastCap = ct; }
-  S.nudgeT += dt;
-  if (S.nudgeT > 45 && A > 3 && W.store.foundCount() < SECRETS.length) {
-    S.nudgeT = 0;
-    const left = SECRETS.filter((s) => !W.store.hasSecret(s.id));
-    W.ui.nudge(left[(Math.random() * left.length) | 0].hint);
+  if (caption.dataset.mood !== moodKind) {
+    caption.dataset.mood = moodKind;
+    caption.classList.toggle('mood', !!moodKind);
+    caption.classList.toggle('greet', moodKind === 'greet');
+    caption.classList.toggle('wake', moodKind === 'wake');
+    caption.classList.toggle('sleep', moodKind === 'sleep');
+    caption.classList.toggle('purr', moodKind === 'purr');
   }
 }
 

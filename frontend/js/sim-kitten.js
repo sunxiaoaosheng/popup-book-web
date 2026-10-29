@@ -5,6 +5,8 @@ import { TUNING } from './tuning.js';
 import { wantsDawnStretch } from './rules.js';
 import { emitAll } from './bus.js';
 import { stepKittenMode } from './kitten-machine.js';
+import { stepKittenMood } from './kitten-mood.js';
+import { applyKittenLook, applyPetSquint } from './kitten-look.js';
 import { stepSeasonBeats } from './season-beats.js';
 
 export function stepKitten(W, dt) {
@@ -19,7 +21,11 @@ export function stepKitten(W, dt) {
   const mouseLook = T - S.mouseT < 4;
   S.napP = clamp(S.napP + dt / 0.9 * ((S.act.nap && S.napLock <= 0 && cabinE > 0.9) ? 1 : -1), 0, 1);
   S.chaseP = clamp(S.chaseP + dt / 1.1 * ((S.act.chase && hopP > 0.95) ? 1 : -1), 0, 1);
-  if (S.napP < 0.01 && !S.act.nap && S.purring && !S.petDown) { W.sound.purr(false); S.purring = false; }
+  if (S.purrHold > 0) S.purrHold = Math.max(0, S.purrHold - dt);
+  if (S.napP < 0.01 && !S.act.nap && S.purring && !S.petDown && !(S.purrHold > 0)) {
+    W.sound.purr(false);
+    S.purring = false;
+  }
   S.petE = smooth(S.petE, S.petDown ? 1 : 0, dt, S.petDown ? 0.2 : 0.8);
 
   const napE = S.napP * S.napP * (3 - 2 * S.napP);
@@ -326,4 +332,16 @@ export function stepKitten(W, dt) {
   emitAll(W.bus, stepSeasonBeats(S.beats, {
     dt, season: seasonI, onSill, angle: A, captionBusy: T < S.capUntil,
   }));
+  emitAll(W.bus, stepKittenMood(S.kittenMood, {
+    dt,
+    angle: A,
+    speed: S.sp,
+    visible: !!showK,
+    mode: S.kittenMode,
+    captionBusy: T < S.capUntil,
+    distracted: !!(S.act.chase || S.act.nap || S.chaseP > 0.05 || S.napP > 0.2 || S.petDown || S.startled > 0.25),
+    rng: Math.random,
+  }));
+  if (showK) applyKittenLook(K, S.kittenMood, T, S.kittenMode, F.hopP > 0.85 && S.chaseP < 0.05);
+  if (showK && S.petSquint > 0.02) applyPetSquint(K, S.petSquint);
 }

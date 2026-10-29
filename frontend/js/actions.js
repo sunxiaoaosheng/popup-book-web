@@ -10,6 +10,7 @@ export function bindActions(W) {
     W.sound.chime();
     W.ui.found(id);
     W.drawCover(S.season, W.store.cycles, W.store.foundCount());
+    if (W.bus) W.bus.emit('sticker', { type: 'sticker', id, phase: 'reveal' });
     return true;
   };
   W.shakeBurst = () => {

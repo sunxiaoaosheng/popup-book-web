@@ -13,6 +13,14 @@
     box-shadow:0 10px 28px rgba(0,0,0,.35)}
   #caption.wake{font-size:28px;padding:12px 26px;color:#fff6e4;background:rgba(72,36,64,.92)}
   #caption.sleep{font-size:26px;padding:12px 24px;color:#efe4ff;background:rgba(42,32,64,.92)}
+  #caption.purr{font-size:26px;padding:12px 24px;color:#ffe7c4;background:rgba(92,52,24,.92);letter-spacing:.18em}
+  #pet-cursor{position:fixed;left:0;top:0;z-index:11;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+    pointer-events:none;border:2px solid #fff6e8;background:rgba(242,162,74,.9);
+    box-shadow:0 0 0 4px rgba(60,32,12,.28)}
+  #pet-cursor.stuck{width:22px;height:22px;margin:-11px 0 0 -11px;background:#ffe1b0;
+    box-shadow:0 0 0 5px rgba(242,162,74,.35)}
+  #pet-cursor[hidden]{display:none}
+  html.pet-stuck,html.pet-stuck body,html.pet-stuck canvas{cursor:none !important}
   #hud{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9;width:min(680px,92vw);
     background:rgba(30,22,16,.72);backdrop-filter:blur(8px);border-radius:14px;padding:10px 16px 12px;
     box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:13px;}

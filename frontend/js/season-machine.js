@@ -99,23 +99,26 @@ export function stepSeason(SEASON, S, angle, dt = 0, tuning = TUNING) {
   if (S.seasonCatchup) {
     const dur = Math.max(0.05, tuning.seasonCatchupSec);
     const p = Math.min(1, SEASON.t + Math.max(0, dt) / dur);
-    if (p > SEASON.t) {
-      SEASON.t = p;
-      events.push({ type: 'season', phase: 'morph', t: p });
-    }
+    pushMorph(SEASON, events, p);
     pushCaption(SEASON, S, events);
     if (SEASON.t >= 1) S.seasonCatchup = false;
     return events;
   }
   if (angle >= tuning.seasonMorphLo) {
     const p = morphProgress(angle, tuning);
-    if (p > SEASON.t) {
-      SEASON.t = p;
-      events.push({ type: 'season', phase: 'morph', t: p });
-    }
+    pushMorph(SEASON, events, p);
     pushCaption(SEASON, S, events);
   }
   return events;
+}
+
+/** t 往前走才发 morph。第一次走到 1 另发 land，给触控板轻点用。 */
+function pushMorph(SEASON, events, p) {
+  if (!(p > SEASON.t)) return;
+  const landed = p >= 1 && SEASON.t < 1;
+  SEASON.t = p;
+  events.push({ type: 'season', phase: 'morph', t: p });
+  if (landed) events.push({ type: 'season', phase: 'land' });
 }
 
 /**

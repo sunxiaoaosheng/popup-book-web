@@ -130,6 +130,9 @@ export function attachDebug(W, input) {
         ritualAmp: +ritualIntensity(SEASON.t).toFixed(3),
         ritualFront: +ritualFront(SEASON.t).toFixed(3),
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
+        petStuck: !!(S.pet && S.pet.stuck),
+        petSquint: S.pet ? +S.pet.squint.toFixed(2) : 0,
+        petVia: S.pet ? S.pet.via : '',
         feel: W.store.feel,
         camFov: +W.camera.fov.toFixed(3),
         hinge: W.feelState ? {

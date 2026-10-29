@@ -8,6 +8,7 @@ import json
 import sys
 import time
 
+from haptic import handle_client_text, pulse_trackpad
 from health import Status, serve_health
 from netbind import loopback_hosts
 from protocol import angle_frame, heartbeat_frame
@@ -45,8 +46,12 @@ async def _run(source, args):
         status.set_clients(len(clients))
         print(f"[bridge] 网页已连接 ({len(clients)} 个客户端)")
         try:
-            async for _ in ws:
-                pass
+            async for raw in ws:
+                # 不认识的文本丢掉。轻点做不到时也不许把这条连接拆掉。
+                try:
+                    handle_client_text(raw, pulse_trackpad)
+                except Exception:
+                    pass
         except Exception:
             pass
         finally:

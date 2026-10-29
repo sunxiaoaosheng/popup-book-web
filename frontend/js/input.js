@@ -5,6 +5,7 @@ import { parseAngleMessage, createSeqGate, linkState } from './protocol.js';
 import { autoLabel, autoPressed, controlSource } from './control.js';
 import { noteHiddenClose } from './rules.js';
 import { TUNING } from './tuning.js';
+import { sampleForceEvent } from './trackpad-pet.js';
 
 export function createInput(W) {
   const { S } = W;
@@ -242,6 +243,15 @@ export function createInput(W) {
     get wsActive() { return link === 'live'; },
     get link() { return link; },
     get ws() { return ws; },
+    send(raw) {
+      if (!ws || ws.readyState !== 1) return false;
+      try {
+        ws.send(raw);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }
 
@@ -261,11 +271,33 @@ function bindPointer(W) {
   cv.style.touchAction = 'none';
   const v = W.tmp.v;
 
-  function pointerNdc(e) {
+  function readPointer(e) {
     const r = cv.getBoundingClientRect();
-    S.mouseX = ((e.clientX - r.left) / r.width) * 2 - 1;
-    S.mouseY = -((e.clientY - r.top) / r.height) * 2 + 1;
-    ndc.set(S.mouseX, S.mouseY);
+    const x = ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1;
+    const y = -((e.clientY - r.top) / Math.max(1, r.height)) * 2 + 1;
+    return { x, y };
+  }
+  function noteForce(e, down) {
+    if (!S.petIn) return;
+    const f = sampleForceEvent(e);
+    if (f.forceKnown) {
+      S.petIn.forceKnown = true;
+      S.petIn.force = f.force;
+      if (f.force >= TUNING.trackpad.lightForce) S.petIn.sawDown = true;
+    }
+    if (down) {
+      S.petIn.down = true;
+      S.petIn.sawDown = true;
+    }
+  }
+  function pointerNdc(e) {
+    const p = readPointer(e);
+    if (S.petIn) S.petIn.pointer = p;
+    if (S.pet && S.pet.stuck) return p;
+    S.mouseX = p.x;
+    S.mouseY = p.y;
+    ndc.set(p.x, p.y);
+    return p;
   }
   function pick() {
     raycaster.setFromCamera(ndc, W.camera);
@@ -286,6 +318,8 @@ function bindPointer(W) {
   let hoverCd = 0;
   cv.addEventListener('pointermove', (e) => {
     pointerNdc(e);
+    noteForce(e, false);
+    if (S.pet && S.pet.stuck) return;
     S.mouseT = S.time;
     const now = performance.now();
     if (now - hoverCd < 80) return;
@@ -294,9 +328,14 @@ function bindPointer(W) {
     cv.style.cursor = h ? 'pointer' : 'default';
     S.hover = h ? h.type : '';
   });
-  cv.addEventListener('pointerleave', () => { S.mouseT = -99; });
+  cv.addEventListener('pointerleave', () => {
+    if (S.pet && S.pet.stuck) return;
+    S.mouseT = -99;
+  });
   cv.addEventListener('pointerdown', (e) => {
     pointerNdc(e);
+    noteForce(e, true);
+    if (S.pet && S.pet.stuck) return;
     S.mouseT = S.time;
     const h = pick();
     if (!h) return;
@@ -334,7 +373,7 @@ function bindPointer(W) {
   const endPet = () => {
     if (!S.petDown) return;
     S.petDown = false;
-    if (S.purring && !S.act.nap) { W.sound.purr(false); S.purring = false; }
+    if (S.purring && !S.act.nap && !(S.purrHold > 0)) { W.sound.purr(false); S.purring = false; }
   };
   cv.addEventListener('pointerup', endPet);
   cv.addEventListener('pointercancel', endPet);

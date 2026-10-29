@@ -38,7 +38,7 @@ flowchart LR
 | `frontend/js/journal-watch.js` `journal-book.js` `sticker-art.js` | 每帧记进度；八格贴纸和集齐画面 |
 | `frontend/js/sim-*.js` | 弹簧、网格、灯光。问状态机，不自己写判定 |
 | `frontend/js/quality.js` | 隐藏页面不画；像素比和阴影贴图只降不升 |
-| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*`，贴纸本在 `sticker*`，小猫心情在 `kitten` |
+| `frontend/js/tuning.js` | 手感数字，唯一的一处。分享卡在 `SHARE`，合页拟音和镜头在 `HINGE_FEEL`，开场在 `stage*`，换季仪式在 `ritual*`，贴纸本在 `sticker*`，小猫心情在 `kitten`，触控板逗猫在 `trackpad` |
 | `frontend/js/kitten-memory.js` `kitten-lines.js` `kitten-wire.js` | 见面记录、闲话、把心情接到存档 |
 | `frontend/js/share-layout.js` | 分享卡文案和排版。纯函数 |
 | `frontend/js/share-border.js` | 手绘边和纸边墨点。纯函数 |
@@ -50,9 +50,12 @@ flowchart LR
 | `frontend/js/sim-feel.js` | 套到相机上，并在静音时把拟音让掉 |
 | `frontend/js/stage-show.js` | 开场幕布。角度 → 暗角、扫光、分层折纸。不判秘密 |
 | `frontend/js/stage-show-view.js` | 把幕布画到暗角和纸片上 |
+| `frontend/js/trackpad-pet.js` | 光标粘住、滚动是否还跟手、轻压眯眼。纯函数。没有旋钮和音量 |
+| `frontend/js/trackpad-haptic.js` | 把一次固定的触控板轻点编成发给桥的文本 |
+| `frontend/js/trackpad-wire.js` | 投影热点、字幕和呼噜、贴纸揭开 / 换季落地时请桥轻点。桥做不到就跳过 |
 
 `S` 仍是运行时状态，`__popup.dbg()` 读的是同一份。状态机没有自己藏一份平行状态。
 
 ## 桥
 
-`bridge.py` 只解析参数并选一个适配器。读角度、序号、心跳、`/health` 在 `broadcast.py` 和 `health.py`。适配器契约在 `docs/ADAPTERS.md`。线上的帧格式仍是 `docs/PROTOCOL.md` 的 v1。
+`bridge.py` 只解析参数并选一个适配器。读角度、序号、心跳、`/health` 在 `broadcast.py` 和 `health.py`。适配器契约在 `docs/ADAPTERS.md`。线上的角度帧仍是 `docs/PROTOCOL.md` 的 v1。网页可以另请桥做一下触控板轻点；`haptic.py` 做不到就当没这回事，不改角度。

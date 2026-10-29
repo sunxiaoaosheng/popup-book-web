@@ -124,6 +124,24 @@ function applyAct(K, M, env, roomy) {
  * @param {string} mode hidden / nap / dawn / play
  * @param {boolean} [roomy] 已经站到窗台外
  */
+/**
+ * 粘住之后的轻压。只收眼睛和头，不改落点。
+ * @param {any} K
+ * @param {number} amount 0 睁着，1 眯上
+ */
+export function applyPetSquint(K, amount) {
+  if (!K || !(amount > 0)) return;
+  const a = amount > 1 ? 1 : amount;
+  if (K.eyes) {
+    for (const e of K.eyes) {
+      if (!e || !e.scale) continue;
+      e.scale.y *= 1 - 0.86 * a;
+      if (e.scale.y < 0.07) e.scale.y = 0.07;
+    }
+  }
+  if (K.head) K.head.rotation.x += 0.18 * a;
+}
+
 export function applyKittenLook(K, M, time, mode, roomy = false) {
   if (!K || !M || mode === 'hidden' || mode === 'nap') return;
   const env = bell(M);

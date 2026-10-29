@@ -2,6 +2,7 @@
  * 把礼物放在窗台上，并把「闻一下 / 收回」叠到已经摆好的纸模上。
  * 不建仪表，也不改合页。几何只分配一次。
  */
+import * as THREE from '../vendor/three.module.js';
 import { box } from './materials.js';
 
 /** @param {any} W */

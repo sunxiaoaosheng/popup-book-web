@@ -17,6 +17,7 @@ export const STALE_MS = 1500;
  * @property {number|null} t 桥进程内的单调毫秒
  * @property {boolean} legacy
  * @property {string} mode 桥的模式；旧帧为空串
+ * @property {number|null} light 勒克斯。没有这个字段、或不是有限数字时为 null。0 是夜里，不是缺失。
  */
 
 /**
@@ -40,15 +41,22 @@ export function parseAngleMessage(raw) {
   const angleOk = typeof obj.angle === 'number' && Number.isFinite(obj.angle);
   const legacy = obj.v == null && obj.seq == null && obj.t == null && obj.type == null;
   const mode = typeof obj.mode === 'string' ? obj.mode : '';
+  const light = readLight(obj.light);
 
   if (declared === 'heartbeat') {
-    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode };
+    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode, light };
   }
   if (declared === 'angle' || (declared === '' && angleOk) || (declared !== '' && declared !== 'angle' && angleOk)) {
     if (!angleOk) return null;
-    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode };
+    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode, light };
   }
   return null;
+}
+
+/** 坏掉的 light 当成没有。0 留下。负值收成 0。 */
+function readLight(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return value < 0 ? 0 : value;
 }
 
 /**

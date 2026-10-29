@@ -11,6 +11,7 @@ import time
 from health import Status, serve_health
 from netbind import loopback_hosts
 from protocol import angle_frame, heartbeat_frame
+from sensors.ambient import read_source_light
 
 try:
     import websockets
@@ -104,10 +105,14 @@ async def _run(source, args):
                     a = smoothed
                 a = max(0.0, min(args.clamp, a))
                 seq += 1
-                broadcast(json.dumps(angle_frame(seq, t_ms(), a, source.mode)))
+                frame = angle_frame(seq, t_ms(), a, source.mode, read_source_light(source))
+                broadcast(json.dumps(frame))
                 status.note_angle(a, seq)
                 if time.time() - last_print > 1.0:
-                    print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f})", end="\r", flush=True)
+                    extra = ""
+                    if "light" in frame:
+                        extra = f"  light {frame['light']:.0f} lx"
+                    print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f}){extra}", end="\r", flush=True)
                     last_print = time.time()
             if now >= next_heart:
                 seq += 1

@@ -1,13 +1,14 @@
 /**
  * 存档。不碰 localStorage：浏览器适配在 store.js，测试传入内存 read/write。
  * 小猫的记性是里面的 kitten 字段，变换在 kitten-memory.js。
+ * ambient 是环境光开关。缺省关掉，天空只用书里的时间。
  */
 import { normalizeFeel } from './hinge-feel.js';
 import { blankKittenMemory, normalizeKittenMemory, pushVisit } from './kitten-memory.js';
 
 /** @typedef {{attempts:Record<string, number>, tiers:Record<string, number>, finaleSeen:boolean}} JournalProgress */
 /** @typedef {import('./kitten-memory.js').KittenMemory} KittenMemory */
-/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, pets:number, opens:number, feel:string, stageShown:boolean, journal:JournalProgress, kitten:KittenMemory}} SaveData */
+/** @typedef {{cycles:number, secrets:Record<string, number>, seasons:Record<string, number>, muted:boolean, ambient:boolean, pets:number, opens:number, feel:string, stageShown:boolean, journal:JournalProgress, kitten:KittenMemory}} SaveData */
 /** @typedef {{read:() => (SaveData|null), write:(data:SaveData) => void}} StoreIO */
 /** @typedef {{id:string, attempt?:boolean, tier?:number}} JournalUpdate */
 
@@ -49,7 +50,7 @@ function loadJournal(src) {
 
 /** @returns {SaveData} */
 export function blankSave() {
-  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, pets: 0, opens: 0, feel: 'normal', stageShown: false, journal: blankJournal(), kitten: blankKittenMemory() };
+  return { cycles: 0, secrets: {}, seasons: { 0: 1 }, muted: false, ambient: false, pets: 0, opens: 0, feel: 'normal', stageShown: false, journal: blankJournal(), kitten: blankKittenMemory() };
 }
 
 /**
@@ -61,6 +62,7 @@ export function createStore(io, initial = null) {
   if (initial && typeof initial === 'object') {
     data.cycles = initial.cycles || 0;
     data.muted = !!initial.muted;
+    data.ambient = !!initial.ambient;
     data.feel = normalizeFeel(initial.feel);
     data.pets = initial.pets || 0;
     data.opens = initial.opens || 0;
@@ -77,6 +79,8 @@ export function createStore(io, initial = null) {
     get cycles() { return data.cycles; },
     get muted() { return data.muted; },
     setMuted(m) { data.muted = !!m; save(); },
+    get ambient() { return data.ambient; },
+    setAmbient(on) { data.ambient = !!on; save(); },
     get feel() { return data.feel; },
     setFeel(level) { data.feel = normalizeFeel(level); save(); },
     hasSecret(id) { return !!data.secrets[id]; },
@@ -158,6 +162,7 @@ export function createStore(io, initial = null) {
       data.secrets = fresh.secrets;
       data.seasons = fresh.seasons;
       data.muted = fresh.muted;
+      data.ambient = fresh.ambient;
       data.feel = fresh.feel;
       data.pets = fresh.pets;
       data.opens = fresh.opens;

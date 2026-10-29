@@ -9,6 +9,7 @@ import { applySeasonLight } from './season-light.js';
 
 const glassOff = new THREE.Color('#7f8f9a');
 const glassOn = new THREE.Color('#ffd37a');
+const bookLight = { se: 0, uc: 0, nightP: 0, dawnP: 0, goldP: 0, elev: 0 };
 
 function erect(b, q, obj, h, th, tanTh, lidY) {
   const want = Math.max(0, q) * Math.PI / 2;
@@ -90,7 +91,16 @@ export function stepStage(W, dt) {
   const slx = lerp(13 * Math.cos(Math.PI * uc), 7, nightP);
   const sly = lerp(3.5 + 13 * elev, 13, nightP);
   sun.position.set(slx, sly, 11);
-  applySeasonLight(W, { se, uc, nightP, dawnP, goldP, elev });
+  // 合页仍决定日晷、月亮、窗灯和字幕。环境光只在打开、且读数还新时，改这一帧涂到天空上的时刻。
+  bookLight.se = se;
+  bookLight.uc = uc;
+  bookLight.nightP = nightP;
+  bookLight.dawnP = dawnP;
+  bookLight.goldP = goldP;
+  bookLight.elev = elev;
+  const ambientOn = !!(W.store && W.store.ambient);
+  const paint = W.ambient ? W.ambient.paint(bookLight, ambientOn, performance.now(), dt) : bookLight;
+  applySeasonLight(W, paint);
   W.paperSun.userData.halo.material.opacity = 0.32 + 0.3 * lowP;
   S.dayC = uc;
   S.goldP = goldP;

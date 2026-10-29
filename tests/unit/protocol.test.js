@@ -13,7 +13,8 @@ test('legacy angle frame', () => {
 
 test('v1 angle keeps unknown fields out of the result', () => {
   const f = parseAngleMessage('{"v":1,"seq":4,"t":12.5,"type":"angle","angle":3,"vendor":{"x":1}}');
-  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'mode', 'seq', 't', 'type', 'v']);
+  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'mode', 'seq', 't', 'type', 'v', 'weight']);
+  assert.equal(f.weight, null);
   assert.equal(f.mode, '');
   assert.equal(f.v, 1);
   assert.equal(f.seq, 4);
@@ -39,6 +40,31 @@ test('mode rides along and stays off legacy frames', () => {
   assert.equal(fakeBeat.mode, 'fake');
   const legacy = parseAngleMessage('{"angle": 1}');
   assert.equal(legacy.mode, '');
+});
+
+test('optional weight rides along and never replaces the angle', () => {
+  const plain = parseAngleMessage('{"v":1,"seq":1,"t":1,"type":"angle","angle":10}');
+  assert.equal(plain.weight, null);
+  assert.equal(plain.angle, 10);
+  const weighed = parseAngleMessage('{"v":1,"seq":2,"t":2,"type":"angle","angle":11,"mode":"sensor","weight":0.42}');
+  assert.equal(weighed.angle, 11);
+  assert.equal(weighed.weight, 0.42);
+  assert.equal(weighed.mode, 'sensor');
+  const zero = parseAngleMessage('{"v":1,"seq":3,"t":3,"type":"angle","angle":1,"weight":0}');
+  assert.equal(zero.weight, 0);
+  const legacy = parseAngleMessage('{"angle":3,"weight":0.2}');
+  assert.equal(legacy.legacy, true);
+  assert.equal(legacy.angle, 3);
+  assert.equal(legacy.weight, 0.2);
+  const junk = parseAngleMessage('{"v":1,"seq":4,"t":4,"type":"angle","angle":8,"weight":"heavy"}');
+  assert.equal(junk.angle, 8);
+  assert.equal(junk.weight, null);
+  const missing = parseAngleMessage('{"v":1,"seq":5,"t":5,"type":"angle","angle":8,"weight":null}');
+  assert.equal(missing.weight, null);
+  const beat = parseAngleMessage('{"v":1,"seq":6,"t":6,"type":"heartbeat","weight":0.5}');
+  assert.equal(beat.type, 'heartbeat');
+  assert.equal(beat.angle, null);
+  assert.equal(beat.weight, 0.5);
 });
 
 test('rejects junk', () => {

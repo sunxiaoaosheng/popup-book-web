@@ -47,6 +47,9 @@ flowchart LR
 | `frontend/js/share-wire.js` | 按钮和 `C`。没在录的时候不读像素 |
 | `frontend/js/hinge-feel.js` | 角速度 → 嘎吱、纸声、轻撞、镜头偏移。纯函数 |
 | `frontend/js/hinge-audio.js` | 把上面的数字放进 WebAudio，接到主音量 |
+| `frontend/js/track-weight.js` | 可选力度 → 窗台礼物、闻一下、拿开复原。纯函数，不读角度 |
+| `frontend/js/track-weight-view.js` | 礼物纸盒和嗅探姿态。不画秤 |
+| `frontend/js/track-weight-wire.js` | 把样本接到状态机。字段缺着就当没有通道 |
 | `frontend/js/sim-feel.js` | 套到相机上，并在静音时把拟音让掉 |
 | `frontend/js/stage-show.js` | 开场幕布。角度 → 暗角、扫光、分层折纸。不判秘密 |
 | `frontend/js/stage-show-view.js` | 把幕布画到暗角和纸片上 |
@@ -56,3 +59,5 @@ flowchart LR
 ## 桥
 
 `bridge.py` 只解析参数并选一个适配器。读角度、序号、心跳、`/health` 在 `broadcast.py` 和 `health.py`。适配器契约在 `docs/ADAPTERS.md`。线上的帧格式仍是 `docs/PROTOCOL.md` 的 v1。
+
+Force Touch 不是第四种角度来源。`broadcast.py` 在角度帧上附加可选的 `weight`。设备不在或子进程退出时省略该字段，合页循环照旧。`/health` 仍只有角度。

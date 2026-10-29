@@ -4,6 +4,7 @@ bridge.py —— 选择一个角度适配器，交给广播服务。
 
 协议 v1 和 GET /health 没变，说明见 docs/PROTOCOL.md。
 适配器契约见 docs/ADAPTERS.md。
+Force Touch 的力度是可选字段，在广播里附上；这里仍只选合页角度来源。
 
     python3 bridge.py --fake
     python3 bridge.py --replay trace.jsonl

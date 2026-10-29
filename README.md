@@ -33,6 +33,7 @@
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
+| `frontend/js/track-weight.js` `track-weight-view.js` `track-weight-wire.js` | 触控板力度是窗台上的低频礼物。稳定一下小猫闻一闻，拿开就收回。没有读数就当没有这回事。不画秤 |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
 | `frontend/js/ui.js` | DOM：音效按钮、手感、贴纸本、提示气泡、"别动"进度环、晚安结尾 |
 | `frontend/js/share-layout.js` `share-border.js` `share-draw.js` `share-capture.js` `share-wire.js` | 分享卡。排版和文案不碰画面；抓像素、下载、短片分开。没点分享时不读像素 |
@@ -40,7 +41,7 @@
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
 | `backend/bridge.py` | 选择适配器。`--fake` / `--replay` / 真实合页 |
 | `backend/broadcast.py` `backend/health.py` | 协议 v1 广播和 `GET /health` |
-| `backend/sensors/` | 角度适配器。契约在 `docs/ADAPTERS.md` |
+| `backend/sensors/` | 角度适配器。契约在 `docs/ADAPTERS.md`。`force.py` 是可选力度，不是合页 |
 | `backend/protocol.py` | 角度帧、心跳、`/health` 的字段 |
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
@@ -168,6 +169,13 @@
 - 心情会变：在它出来玩的角度停大约 9 秒，它会闭上眼、头上冒出很大的 Zzz；把盖子轻轻抖大约 1° 就伸个懒腰醒过来。四十五分钟里打开够三次，它会兴奋；二十分钟内被猛地合上过，它会把耳朵压平、脸红。手账仍是 8 条，秘密的触发角度没有改。
 - 醒着时眨眼、歪头、舔爪子会换着来，不会按同一个圈循环。偶尔冒出一句很短的话。这些话让路给秘密和换季字幕。落点没改，仍在门洞里和台阶之间的平地上。
 - 数字在 `frontend/js/tuning.js` 的 `TUNING.kitten`。
+
+## 二·十七、窗台上的一份重量（不剧透版）
+
+- 带 Force Touch 的触控板可以当一个很轻的礼物：把一样小东西在板上放稳，窗台上会多出一只小纸盒，小猫凑过去闻一下，然后照旧蹲着。拿开，纸盒离开，它把鼻子收回来。
+- 这不是秤。页面上没有克数，也没有仪表。力度只是角度帧上一个可有可无的 `weight`（0 到 1）。没有这块触控板、或桥没带上这个字段时，书和以前一样，不会报错。
+- 合页还是合页。滑块、假角度、真实盖角都不变。东西一直放着不会反复闻；拿开再放，也要隔一会儿。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.trackWeight`。真机上的 Force Touch 读数还没核对过。
 
 ## 三、运行
 

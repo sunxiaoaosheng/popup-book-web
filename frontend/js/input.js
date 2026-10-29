@@ -60,6 +60,19 @@ export function createInput(W) {
     S.target = Math.min(MAX_ANGLE, Math.max(0, +a || 0));
   }
 
+  /** 归一化静置力度。null 清掉样本，状态机随后当作没有通道。 */
+  function setWeight(w) {
+    if (w == null || !Number.isFinite(+w)) {
+      S.trackSample = null;
+      return;
+    }
+    noteWeight(Math.max(0, +w));
+  }
+
+  function noteWeight(w) {
+    S.trackSample = { value: w, at: performance.now() };
+  }
+
   function arm() {
     if (stopped || timer) return;
     timer = setTimeout(() => { timer = 0; connect(); }, 2000);
@@ -133,14 +146,17 @@ export function createInput(W) {
       const frame = parseAngleMessage(raw);
       if (!frame || !gate.accept(frame)) {
         if (frame) W.net.dropped += 1;
-      } else if (frame.type === 'heartbeat') {
-        noteMode(frame.mode);
-      } else if (frame.type === 'angle') {
-        lastAngleAt = performance.now();
-        noteMode(frame.mode);
-        noteLink();
-        const src = driver();
-        if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (frame.angle));
+      } else {
+        if (frame.weight != null) noteWeight(frame.weight);
+        if (frame.type === 'heartbeat') {
+          noteMode(frame.mode);
+        } else if (frame.type === 'angle') {
+          lastAngleAt = performance.now();
+          noteMode(frame.mode);
+          noteLink();
+          const src = driver();
+          if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (frame.angle));
+        }
       }
     } catch { /* 忽略坏帧 */ }
     noteLink();
@@ -233,7 +249,7 @@ export function createInput(W) {
   }
 
   return {
-    tick, maybeHud, refreshHud, setAngle, WS_URL,
+    tick, maybeHud, refreshHud, setAngle, setWeight, WS_URL,
     pushRaw: acceptRaw,
     holdSensor(on) {
       sensorHold = !!on;

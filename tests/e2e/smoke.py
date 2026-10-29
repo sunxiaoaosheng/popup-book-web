@@ -94,6 +94,38 @@ def main():
             pose = q.evaluate("() => { let best = 0; for (let i = 0; i < 90; i++) { __popup.settle(1/30); best = Math.max(best, __popup.dbg().dawnPose); } return best; }")
             check("清晨伸懒腰", pose > 0.8 and q.evaluate("__popup.dbg().dawnStretch") > 0.8, f"pose={pose}")
 
+            track = q.evaluate("""() => {
+              __popup.setAngle(105);
+              __popup.settle(2);
+              const before = __popup.dbg().track;
+              __popup.setWeight(0.5);
+              __popup.settle(0.9);
+              const mid = __popup.dbg();
+              __popup.settle(1.4);
+              const on = __popup.dbg().track;
+              __popup.setWeight(0);
+              __popup.settle(1.6);
+              const off = __popup.dbg().track;
+              return {
+                before, mid: mid.track, mood: mid.moodCap || '', on, off,
+                hinge: !!mid.hinge, scale: !!document.querySelector('#scale, #weight, .scale'),
+              };
+            }""")
+            check(
+                "窗台礼物闻一下再收回",
+                track["before"]["phase"] == "idle"
+                and track["mid"]["phase"] == "sniff"
+                and "闻了闻" in track["mood"]
+                and track["on"]["phase"] == "held"
+                and track["on"]["gift"] > 0.5
+                and track["on"]["sniff"] < 0.05
+                and track["off"]["phase"] == "idle"
+                and track["off"]["gift"] < 0.15
+                and track["hinge"]
+                and not track["scale"],
+                str(track),
+            )
+
             q.evaluate("__popup.setAngle(8); __popup.settle(4.5)")
             q.evaluate("__popup.setAngle(90); __popup.settle(1.2)")
             check("缝里的眼睛", q.evaluate("__popup.store.hasSecret('seam')") is True)

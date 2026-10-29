@@ -9,14 +9,35 @@ def _with_mode(body, mode):
     return body
 
 
-def angle_frame(seq, t_ms, angle, mode=None):
-    return _with_mode({
+def _optional_weight(weight):
+    """归一化静置力度。None 表示这一帧不带该字段。非法值也省略，不当成 0。"""
+    if weight is None:
+        return None
+    try:
+        w = float(weight)
+    except (TypeError, ValueError):
+        return None
+    if w != w or w == float("inf") or w == float("-inf"):
+        return None
+    if w < 0.0:
+        w = 0.0
+    if w > 1.0:
+        w = 1.0
+    return round(w, 2)
+
+
+def angle_frame(seq, t_ms, angle, mode=None, weight=None):
+    body = {
         "v": PROTOCOL_VERSION,
         "seq": int(seq),
         "t": round(float(t_ms), 1),
         "type": "angle",
         "angle": round(float(angle), 2),
-    }, mode)
+    }
+    w = _optional_weight(weight)
+    if w is not None:
+        body["weight"] = w
+    return _with_mode(body, mode)
 
 
 def heartbeat_frame(seq, t_ms, mode=None):

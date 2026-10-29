@@ -1,6 +1,7 @@
 // 运行时状态。测试钩子 `__popup.S` 指向同一对象。
 import { Spring } from './math.js';
 import { createKittenMood } from './kitten-mood.js';
+import { createTrackWeight } from './track-weight.js';
 
 export const MAX_ANGLE = 130;
 export const PW = 10;
@@ -40,6 +41,9 @@ export const S = {
   pageHidden: false, revealOpen: false, seasonCatchup: false, poseLatch: null,
   kittenMode: 'hidden', kittenMood: createKittenMood(), holdRing: -1, _heartOn: false,
   beats: { springSaid: false, winterSaid: false, springT: 0 },
+  /** 触控板礼物。样本由输入写入；没有力度通道时 trackSample 保持 null。 */
+  track: createTrackWeight(),
+  trackSample: null,
   cap: '', capUntil: 0, moodCap: '', moodUntil: 0, moodKind: '', kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
   owlPend: 0, seamEye: 0, conBurst: 0, dawnStretch: 0, heartCd: 0, sneeze: 0, endMode: undefined,
   fx: 0, fy: 0, fz: 0,

@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "backend"))
 
-from protocol import angle_frame, health_body, heartbeat_frame  # noqa: E402
+from protocol import angle_frame, health_body, heartbeat_frame, optional_light  # noqa: E402
 
 
 class ProtocolTest(unittest.TestCase):
@@ -21,6 +21,26 @@ class ProtocolTest(unittest.TestCase):
         again = json.loads(raw)
         again["unrelated"] = {"keep": True}
         self.assertEqual(again["angle"], 87.26)
+
+    def test_mode_is_optional(self):
+        plain = angle_frame(1, 1, 1)
+        self.assertNotIn("mode", plain)
+        self.assertEqual(angle_frame(1, 1, 1, "sensor")["mode"], "sensor")
+        self.assertEqual(heartbeat_frame(2, 3, "fake")["mode"], "fake")
+        self.assertNotIn("mode", heartbeat_frame(2, 3))
+
+    def test_light_is_optional_on_the_angle_frame(self):
+        plain = angle_frame(1, 1, 12)
+        self.assertNotIn("light", plain)
+        self.assertEqual(angle_frame(1, 1, 12, light=12.26)["light"], 12.3)
+        self.assertEqual(angle_frame(1, 1, 12, "sensor", 0)["light"], 0.0)
+        self.assertNotIn("light", angle_frame(1, 1, 12, light=float("nan")))
+        self.assertEqual(angle_frame(1, 1, 12, light=-4)["light"], 0.0)
+        self.assertIsNone(optional_light(True))
+        self.assertIsNone(optional_light("12"))
+        beat = heartbeat_frame(2, 3, "fake")
+        self.assertNotIn("light", beat)
+        self.assertNotIn("angle", beat)
 
     def test_heartbeat_has_no_angle(self):
         beat = heartbeat_frame(4, 1000)

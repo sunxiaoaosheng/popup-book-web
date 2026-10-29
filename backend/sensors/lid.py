@@ -3,6 +3,7 @@
 import threading
 import time
 
+from sensors.ambient import AmbientProbe
 from sensors.base import AngleSource
 
 
@@ -32,8 +33,15 @@ class PyBookLidSource(AngleSource):
         self._last_ok = 0.0
         self._stop = False
         self._interval = 1.0 / max(hz, 1)
+        self._als = AmbientProbe()
         self._th = threading.Thread(target=self._loop, daemon=True)
         self._th.start()
+
+    def read_light(self):
+        try:
+            return self._als.read()
+        except Exception:
+            return None
 
     def _loop(self):
         while not self._stop:

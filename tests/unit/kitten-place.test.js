@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CABIN_Z, CHASE_BOX, DOOR_HOLE, chaseAim, doorSpan } from '../../frontend/js/kitten-place.js';
+import { CABIN_Z, CHASE_BOX, DOOR_HOLE, chaseAim, doorSpan, hopProgress } from '../../frontend/js/kitten-place.js';
 
 test('peeking kitten stays inside the door and above the floor', () => {
   for (const peekP of [0, 0.57, 1]) {
@@ -10,6 +10,14 @@ test('peeking kitten stays inside the door and above the floor', () => {
     assert.ok(s.py >= 0.03, `feet ${s.py}`);
     assert.ok(s.pz < -0.05, `depth ${s.pz}`);
   }
+});
+
+test('by 100° the hop has landed even if the kitten is shy', () => {
+  assert.equal(hopProgress(100, 0), 1);
+  assert.equal(hopProgress(107, 1), 1);
+  assert.equal(hopProgress(110, 1), 1);
+  assert.equal(hopProgress(80, 1), 0);
+  assert.ok(hopProgress(93, 1) < hopProgress(93, 0));
 });
 
 test('chase path stays on the open floor in front of the terraces', () => {

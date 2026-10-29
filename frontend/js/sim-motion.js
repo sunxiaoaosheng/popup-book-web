@@ -1,20 +1,33 @@
 // 开合手感、摇晃/猛开、停住彩蛋、一整天。不碰网格。
 import { clamp, smooth, sstep } from './math.js';
+import { hopProgress } from './kitten-place.js';
 import { TUNING } from './tuning.js';
 import { heartTarget } from './rules.js';
 import { emitAll } from './bus.js';
-import { stepHolds, stepShake, stepStartle } from './play-machine.js';
+import { stepClose, stepHolds, stepShake, stepStartle } from './play-machine.js';
+import { cancelSeasonCatchup, catchupAngle, nextSeasonCatchT } from './season-machine.js';
+import { dropDeferredMotif, releaseDeferredMotif } from './season-motif.js';
 
 export function stepMotion(W, dt) {
   const { S, frame: F } = W;
   const T = (S.time += dt);
-  const a = clamp(S.target, 0, 130);
-  S.filtered += (a - S.filtered) * (1 - Math.exp(-dt / 0.035));
+  const goal = clamp(S.target, 0, 130);
+  if ((S.revealOpen || S.seasonCatchup) && goal < TUNING.seasonMorphLo) {
+    if (cancelSeasonCatchup(W.SEASON, S)) {
+      dropDeferredMotif();
+      if (typeof W.applySeasonVisuals === 'function') W.applySeasonVisuals();
+    }
+  }
+  const catching = !!(S.revealOpen || S.seasonCatchup);
+  if (!catching) {
+    S.poseLatch = null;
+    S.filtered += (goal - S.filtered) * (1 - Math.exp(-dt / 0.035));
+  }
   const v = (S.filtered - S.prevFiltered) / Math.max(dt, 1e-4);
   S.prevFiltered = S.filtered;
   S.vel += (v - S.vel) * (1 - Math.exp(-dt / 0.12));
   S.sp += (Math.abs(S.vel) - S.sp) * (1 - Math.exp(-dt / 0.2));
-  const A = S.filtered;
+  let A = S.filtered;
   if (S.vel > 6) {
     if (S.lastDir < 0) S.yawnT = 99;
     S.lastDir = 1;
@@ -23,7 +36,28 @@ export function stepMotion(W, dt) {
     S.lastDir = -1;
   }
   if (S.yawnT < 99) S.yawnT += dt;
-  const sp = S.sp;
+  let sp = S.sp;
+
+  // 合盖在天空和扫场粒子之前结算。那些画面抛错时也不能把季节 +1 吃掉。
+  // 隐藏期间补上的合严会把 filtered 拉低，后面的姿势跟这个新角度走。
+  emitAll(W.bus, stepClose(S, { angle: A, speed: sp }));
+  A = S.filtered;
+
+  const catchT = nextSeasonCatchT(W.SEASON, S, dt);
+  if (catchT != null) {
+    if (typeof S.poseLatch !== 'number') S.poseLatch = S.filtered;
+    const next = catchupAngle(S.poseLatch, goal, catchT);
+    const vBlend = (next - S.filtered) / Math.max(dt, 1e-4);
+    S.filtered = next;
+    S.prevFiltered = next;
+    S.vel = vBlend;
+    S.sp = Math.abs(vBlend);
+    sp = S.sp;
+    if (vBlend > 6) S.lastDir = 1;
+    else if (vBlend < -6) S.lastDir = -1;
+    A = S.filtered;
+  }
+  releaseDeferredMotif(W.sound, S.target);
 
   emitAll(W.bus, stepShake(S, { angle: A, time: T }));
   S.burstT = Math.max(0, S.burstT - dt);
@@ -48,7 +82,7 @@ export function stepMotion(W, dt) {
   S.shy = smooth(S.shy, shyTarget, dt, shyTarget ? 0.6 : 0.35);
   S.duck = smooth(S.duck, (S.shy > 0.4 && sp > 40) ? 1 : 0, dt, 0.25);
   F.peekP = S.peek.step(sstep(76, 90, A) * (1 - 0.55 * S.duck), dt);
-  F.hopP = S.hop.step(sstep(91 + 10 * S.shy, 100 + 12 * S.shy, A), dt);
+  F.hopP = S.hop.step(hopProgress(A, S.shy), dt);
   F.eggP = S.egg.step(heartTarget(A), dt);
   const kittenAwake = A > 76;
   const sleepWant = (S.lastDir < 0 && kittenAwake && F.eggP < 0.2 && T - S.lastShake > 3) ? 1 : 0;

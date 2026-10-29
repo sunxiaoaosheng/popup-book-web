@@ -1,5 +1,6 @@
 // 运行时状态。测试钩子 `__popup.S` 指向同一对象。
 import { Spring } from './math.js';
+import { createKittenMood } from './kitten-mood.js';
 
 export const MAX_ANGLE = 130;
 export const PW = 10;
@@ -31,14 +32,15 @@ export const S = {
   sw: { dir: 0, ext: 0, swings: [] },
   hold: { anchor: 0, t: 0, band: '', fired: false },
   act: { seam: false, nap: false, chase: false },
-  armed: false, closing: false, closeMax: 0, ending: 0, slamT: 0,
+  armed: false, closing: false, closeMax: 0, lidShut: false, ending: 0, slamT: 0,
   eggT: 0, lookX: 0, lookY: 0, mouseT: -99, mouseX: 0, mouseY: 0, hover: '', nudgeT: 0,
   run: { on: false, t0: 0, max: 0, bad: '', done: false, dur: 0 },
   conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,
   dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0, seasonMorphSaid: false,
-  kittenMode: 'hidden', holdRing: -1, _heartOn: false,
+  pageHidden: false, revealOpen: false, seasonCatchup: false, poseLatch: null,
+  kittenMode: 'hidden', kittenMood: createKittenMood(), holdRing: -1, _heartOn: false,
   beats: { springSaid: false, winterSaid: false, springT: 0 },
-  cap: '', capUntil: 0, kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
+  cap: '', capUntil: 0, moodCap: '', moodUntil: 0, moodKind: '', kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,
   owlPend: 0, seamEye: 0, conBurst: 0, dawnStretch: 0, heartCd: 0, sneeze: 0, endMode: undefined,
   fx: 0, fy: 0, fz: 0,
 };

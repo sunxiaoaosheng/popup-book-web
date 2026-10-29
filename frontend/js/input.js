@@ -2,6 +2,9 @@
 import * as THREE from '../vendor/three.module.js';
 import { MAX_ANGLE } from './state.js';
 import { parseAngleMessage, createSeqGate, linkState } from './protocol.js';
+import { autoLabel, autoPressed, controlSource } from './control.js';
+import { noteHiddenClose } from './rules.js';
+import { TUNING } from './tuning.js';
 
 export function createInput(W) {
   const { S } = W;
@@ -10,25 +13,48 @@ export function createInput(W) {
   const angleEl = document.getElementById('angle');
   const dot = document.getElementById('dot');
   const srcText = document.getElementById('srcText');
-  const autoBtn = document.getElementById('auto');
-  const WS_URL = params.get('ws') || 'ws://localhost:8765';
+  const autoBtn = /** @type {HTMLButtonElement} */ (document.getElementById('auto'));
+  const WS_URL = params.get('ws') || defaultWsUrl();
   if (params.get('hud') === '0') document.body.classList.add('nohud');
 
+  /** @type {'down'|'wait'|'live'|'stale'} */
   let link = 'down';
   let lastAngleAt = 0;
   let ws = null;
   const gate = createSeqGate();
-  let autoPlay = false;
+  /** @type {boolean|null} null 表示还没点过按钮 */
+  let userAuto = null;
+  let bridgeMode = '';
   let autoT = 0;
   let latest = null;
   let seq = 0;
   let seen = -1;
   let timer = 0;
   let stopped = false;
+  let sensorHold = false;
   let dotOn = false;
   let srcCache = '';
   let angleCache = '';
   let hudT = 0;
+  /** @type {{t:number|null, a:number|null, max:number}} */
+  let hiddenTrack = { t: null, a: null, max: 0 };
+
+  function rememberHiddenAngle(raw) {
+    let frame;
+    try { frame = parseAngleMessage(raw); } catch { return; }
+    if (!frame || frame.type !== 'angle' || frame.angle == null) return;
+    const angle = /** @type {number} */ (frame.angle);
+    hiddenTrack = noteHiddenClose(S, hiddenTrack, angle, performance.now(), TUNING);
+    setAngle(angle);
+  }
+
+  function acceptRaw(raw) {
+    if (latest !== null && seq !== seen) W.net.coalesced += 1;
+    latest = raw;
+    seq += 1;
+    // 合严后标签页隐藏，rAF 不再把中间角度排空。低于 closeBelow 的样本在这里记下。
+    if (document.hidden) rememberHiddenAngle(raw);
+  }
 
   function setAngle(a) {
     S.target = Math.min(MAX_ANGLE, Math.max(0, +a || 0));
@@ -51,21 +77,49 @@ export function createInput(W) {
     }
     W.net.connects += 1;
     ws = sock;
-    sock.onopen = () => gate.reset();
-    sock.onmessage = (ev) => {
-      if (latest !== null && seq !== seen) W.net.coalesced += 1;
-      latest = ev.data;
-      seq += 1;
-    };
+    // 桥还没听，或 localhost 只打到 ::1 时，Chrome 可能把套接字停在 CONNECTING，
+    // error/close 都不来。到点主动关掉，交给 onclose 重连，不用整页刷新。
+    const watchdog = setTimeout(() => {
+      if (sock.readyState !== WebSocket.CONNECTING) return;
+      try { sock.close(); } catch { /* onclose 负责重连 */ }
+      if (ws === sock) ws = null;
+      arm();
+    }, 1500);
+    const clearWatch = () => clearTimeout(watchdog);
+    sock.onopen = () => { clearWatch(); gate.reset(); };
+    sock.onmessage = (ev) => { acceptRaw(ev.data); };
     // error 之后一定会 close。只在 close 里重连，避免两条路径把连接数翻倍。
     sock.onerror = () => { try { sock.close(); } catch { /* onclose 负责重连 */ } };
     sock.onclose = () => {
-      if (ws === sock) ws = null;
+      clearWatch();
+      if (ws === sock) {
+        ws = null;
+        bridgeMode = '';
+      }
       arm();
     };
   }
 
+  function noteMode(mode) {
+    if (mode !== 'fake' && mode !== 'sensor' && mode !== 'replay') return;
+    if (mode === bridgeMode) return;
+    const prev = bridgeMode;
+    bridgeMode = mode;
+    // 实机合页接上时丢掉页面上的自动扫角，角度跟盖子走。
+    if (mode === 'sensor' && prev !== 'sensor') userAuto = null;
+  }
+
+  function driver() {
+    return controlSource(userAuto, link, bridgeMode);
+  }
+
   function noteLink() {
+    if (sensorHold) {
+      link = 'live';
+      bridgeMode = 'sensor';
+      W.net.link = link;
+      return;
+    }
     link = linkState(!!(ws && ws.readyState === 1), lastAngleAt, performance.now());
     W.net.link = link;
   }
@@ -79,24 +133,44 @@ export function createInput(W) {
       const frame = parseAngleMessage(raw);
       if (!frame || !gate.accept(frame)) {
         if (frame) W.net.dropped += 1;
+      } else if (frame.type === 'heartbeat') {
+        noteMode(frame.mode);
       } else if (frame.type === 'angle') {
         lastAngleAt = performance.now();
-        setAngle(/** @type {number} */ (frame.angle));
+        noteMode(frame.mode);
+        noteLink();
+        // 环境光跟着角度帧走，不改角度由谁驱动。没有 light 就保持上一拍，过期由时钟自己丢。
+        if (frame.light != null && W.ambient) W.ambient.note(frame.light, lastAngleAt);
+        const src = driver();
+        if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (frame.angle));
       }
     } catch { /* 忽略坏帧 */ }
     noteLink();
   }
 
+  let painting = false;
+  function syncSlider() {
+    if (Math.abs(+slider.value - S.target) <= 0.05) return;
+    painting = true;
+    slider.value = S.target;
+    painting = false;
+  }
   slider.addEventListener('input', () => {
-    if (link === 'live') return;
-    autoPlay = false;
-    autoBtn.textContent = '▶ 自动演示';
+    if (painting || driver() !== 'slider') return;
+    userAuto = false;
     setAngle(slider.value);
   });
-  autoBtn.addEventListener('click', () => {
-    autoPlay = !autoPlay;
-    autoBtn.textContent = autoPlay ? '■ 停止演示' : '▶ 自动演示';
-    autoT = Math.asin(Math.min(1, Math.max(-1, S.target / MAX_ANGLE * 2 - 1)));
+  autoBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const src = driver();
+    if (src === 'auto' || src === 'remote') {
+      userAuto = false;
+    } else {
+      userAuto = true;
+      autoT = Math.asin(Math.min(1, Math.max(-1, S.target / MAX_ANGLE * 2 - 1)));
+    }
+    refreshHud();
   });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('nohud');
@@ -108,9 +182,10 @@ export function createInput(W) {
   bindPointer(W);
 
   function tick(dt) {
+    if (!document.hidden) hiddenTrack = { t: null, a: null, max: 0 };
     drain();
     noteLink();
-    if (autoPlay && link !== 'live') {
+    if (driver() === 'auto') {
       autoT += dt * 0.28;
       setAngle(MAX_ANGLE * (0.5 + 0.5 * Math.sin(autoT)));
     }
@@ -118,24 +193,36 @@ export function createInput(W) {
 
   function refreshHud() {
     noteLink();
-    const live = link === 'live';
-    if (slider.disabled !== live) slider.disabled = live;
-    const wantOn = live;
+    const source = driver();
+    const pressed = autoPressed(source);
+    const manual = source === 'slider';
+    if (slider.disabled !== !manual) slider.disabled = !manual;
+    const wantOn = link === 'live';
     const wantStale = link === 'stale';
     if (dotOn !== wantOn || dot.classList.contains('stale') !== wantStale) {
       dot.classList.toggle('on', wantOn);
       dot.classList.toggle('stale', wantStale);
       dotOn = wantOn;
     }
-    const text = live
-      ? `传感器已连接（${WS_URL}）· 滑块已禁用`
-      : link === 'stale'
-        ? `角度过期（${WS_URL}）· 可改用滑块`
-        : link === 'wait'
-          ? `已连上，等待角度…（${WS_URL}）`
-          : '模拟模式（拖动滑块）· 正在尝试连接 ' + WS_URL;
+    const wantLabel = autoLabel(pressed);
+    if (autoBtn.textContent !== wantLabel) autoBtn.textContent = wantLabel;
+    const pressedAttr = pressed ? 'true' : 'false';
+    if (autoBtn.getAttribute('aria-pressed') !== pressedAttr) autoBtn.setAttribute('aria-pressed', pressedAttr);
+    const text = source === 'auto'
+      ? '自动演示中 · 再点一次停止'
+      : source === 'remote'
+        ? '自动演示中（假角度）· 再点一次改用滑块'
+        : source === 'sensor'
+          ? `传感器已连接（${WS_URL}）· 滑块已禁用`
+          : link === 'stale'
+            ? `角度过期（${WS_URL}）· 可改用滑块`
+            : link === 'wait'
+              ? `已连上，等待角度…（${WS_URL}）`
+              : source === 'slider' && link === 'live'
+                ? '滑块模式 · 自动演示已停止'
+                : '模拟模式（拖动滑块）· 正在尝试连接 ' + WS_URL;
     if (text !== srcCache) { srcText.textContent = text; srcCache = text; }
-    if (Math.abs(+slider.value - S.target) > 0.05) slider.value = S.target;
+    syncSlider();
     const label = S.target.toFixed(1) + '°';
     if (label !== angleCache) { angleEl.textContent = label; angleCache = label; }
   }
@@ -149,10 +236,23 @@ export function createInput(W) {
 
   return {
     tick, maybeHud, refreshHud, setAngle, WS_URL,
+    pushRaw: acceptRaw,
+    holdSensor(on) {
+      sensorHold = !!on;
+      if (sensorHold) noteLink();
+    },
     get wsActive() { return link === 'live'; },
     get link() { return link; },
     get ws() { return ws; },
   };
+}
+
+/** 和页面同一个主机名。localhost 在 macOS 上会先走 ::1，WebSocket 又不像 HTTP 那样回退，所以固定走 127.0.0.1。 */
+function defaultWsUrl() {
+  let host = location.hostname;
+  if (!host || host === 'localhost') host = '127.0.0.1';
+  if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+  return `ws://${host}:19876`;
 }
 
 function bindPointer(W) {

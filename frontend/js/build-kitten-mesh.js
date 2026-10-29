@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { cut, box, polyShape, rectShape, ellipseShape, glowTex } from './materials.js';
 import { FONT } from './state.js';
+import { bindEyeRead, makeEyeRim } from './eye-read.js';
 
 const FUR = '#f2a24a', FUR_D = '#c9722a', CREAM = '#fff0d6', PINK = '#f6a7b3', INK = '#2b1b14';
 
@@ -75,6 +76,7 @@ export function buildKittenMesh(kitten, K) {
     e.add(cut(ellipseShape(0, 0, 0.042, 0.055), '#79d36b', 0.012, 0.01));
     e.add(cut(ellipseShape(0, 0, 0.022, 0.045), INK, 0.022, 0.01));
     e.add(cut(ellipseShape(0.016, 0.026, 0.014, 0.014), '#ffffff', 0.032, 0.008));
+    bindEyeRead(e, makeEyeRim(THREE, 0.074, 0.092, 4));
     K.eyes.push(e);
   }
   for (const sx of [-1, 1]) {

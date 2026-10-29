@@ -2,6 +2,7 @@
  * 状态机事件的副作用。判定在 play-machine / season-machine，这里只碰声音、字幕和存档。
  */
 import { SEASONS } from './story.js';
+import { playSeasonMotif } from './season-motif.js';
 
 /** @param {any} W */
 export function wirePlay(W) {
@@ -43,7 +44,7 @@ export function wirePlay(W) {
   });
 
   bus.on('act-clear', (e) => {
-    if (e.id === 'nap' && S.purring && !S.petDown) {
+    if (e.id === 'nap' && S.purring && !S.petDown && !(S.purrHold > 0)) {
       W.sound.purr(false);
       S.purring = false;
     }
@@ -97,7 +98,10 @@ export function wirePlay(W) {
 
   bus.on('season', (e) => {
     if (e.phase === 'morph') W.applySeasonVisuals();
-    if (e.phase === 'caption') W.say(e.text, 4.2);
+    if (e.phase === 'caption') {
+      W.say(e.text, 4.2);
+      playSeasonMotif(W.sound, W.SEASON.to);
+    }
   });
 
   bus.on('season-beat', (e) => {

@@ -3,6 +3,7 @@
 import math
 import time
 
+from sensors.ambient import demo_lux, pinned_lux
 from sensors.base import AngleSource
 
 
@@ -21,6 +22,13 @@ class FakeSource(AngleSource):
         t = ((self._clock() - self.t0) % self.period) / self.period
         tri = 0.5 - 0.5 * math.cos(2 * math.pi * t)
         return 130.0 * tri
+
+    def read_light(self):
+        pinned = pinned_lux()
+        if pinned is not None:
+            return pinned
+        phase = ((self._clock() - self.t0) % self.period) / self.period
+        return demo_lux(phase)
 
     def close(self):
         return None

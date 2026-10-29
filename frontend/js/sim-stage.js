@@ -4,17 +4,14 @@ import { clamp, lerp, sstep } from './math.js';
 import { timeOfDay as timeOfDayName } from './rules.js';
 import { emitAll } from './bus.js';
 import { stepSeason } from './season-machine.js';
-import { SKY } from './season.js';
-import { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './build-sky.js';
+import { SUN_ARC, sunAt, TIMES } from './build-sky.js';
+import { applySeasonLight } from './season-light.js';
+import { applyEyeRead } from './eye-read.js';
+import { doorNudgeYaw } from './tap-machine.js';
 
 const glassOff = new THREE.Color('#7f8f9a');
 const glassOn = new THREE.Color('#ffd37a');
-const hemiGndDay = new THREE.Color('#7a6a5a');
-const hemiGndNight = new THREE.Color('#2b2f4a');
-const sunNight = new THREE.Color('#9fb4ff');
-const hemiSkyNight = new THREE.Color('#5b6fb5');
-const BG0 = new THREE.Color('#2a211b');
-const BG1 = new THREE.Color('#10162b');
+const bookLight = { se: 0, uc: 0, nightP: 0, dawnP: 0, goldP: 0, elev: 0 };
 
 function erect(b, q, obj, h, th, tanTh, lidY) {
   const want = Math.max(0, q) * Math.PI / 2;
@@ -66,18 +63,18 @@ export function stepStage(W, dt) {
       e.ir.position.set(lx * 0.035, ly * 0.04, 0.001);
       e.pu.position.set(lx * 0.05, ly * 0.05, 0.002);
       e.hl.position.set(0.04 + lx * 0.03, 0.07 + ly * 0.03, 0.003);
-      for (const c of e.g.children) c.material.opacity = S.seamEye;
+      for (const c of e.g.children) {
+        if (c === e.g.userData.halo) continue;
+        c.material.opacity = S.seamEye;
+      }
+      applyEyeRead(e.g, A, { fade: S.seamEye });
     }
   }
 
   const SEASON = W.SEASON;
-  emitAll(W.bus, stepSeason(SEASON, S, A));
+  emitAll(W.bus, stepSeason(SEASON, S, A, dt));
 
-  const SK = SKY[SEASON.to];
-  const SF = SKY[SEASON.from];
   const se = SEASON.t;
-  const c1 = W.tmp.c1, c2 = W.tmp.c2, c3 = W.tmp.c3;
-  const mixC = (key, out) => out.lerpColors(SF[key], SK[key], se);
   const dayRaw = clamp((A - SUN_ARC.a0) / (SUN_ARC.a1 - SUN_ARC.a0), -0.08, 1.08);
   const sunU = S.sunU.step(dayRaw, dt);
   S.dayU = sunU;
@@ -100,30 +97,22 @@ export function stepStage(W, dt) {
   const slx = lerp(13 * Math.cos(Math.PI * uc), 7, nightP);
   const sly = lerp(3.5 + 13 * elev, 13, nightP);
   sun.position.set(slx, sly, 11);
-  sun.intensity = lerp(lerp(SF.sunI, SK.sunI, se) * (0.62 + 0.38 * elev), 1.3, nightP);
-  mixC('sun', c1);
-  c1.lerp(SUN_LOW, 0.75 * lowP);
-  sun.color.lerpColors(c1, sunNight, nightP);
-  const hemi = W.gfx.hemi;
-  hemi.intensity = lerp(1.5 - 0.25 * lowP, 1.05, nightP);
-  mixC('hemi', c1);
-  hemi.color.lerpColors(c1, hemiSkyNight, nightP);
-  hemi.groundColor.lerpColors(hemiGndDay, hemiGndNight, nightP);
-  mixC('day', c1);
-  c1.lerp(DAWN_SKY, 0.7 * dawnP);
-  mixC('mid', c2);
-  c3.lerpColors(c1, c2, goldP);
-  mixC('night', c2);
-  W.skyMat.color.lerpColors(c3, c2, nightP);
-  W.horizonMat.color.lerpColors(DAWN_GLOW, DUSK_GLOW, sstep(0.3, 0.7, uc));
-  W.horizonMat.opacity = Math.max(0.55 * dawnP, 0.85 * goldP) * (1 - nightP);
+  // 合页仍决定日晷、月亮、窗灯和字幕。环境光只在打开、且读数还新时，改这一帧涂到天空上的时刻。
+  bookLight.se = se;
+  bookLight.uc = uc;
+  bookLight.nightP = nightP;
+  bookLight.dawnP = dawnP;
+  bookLight.goldP = goldP;
+  bookLight.elev = elev;
+  const ambientOn = !!(W.store && W.store.ambient);
+  const paint = W.ambient ? W.ambient.paint(bookLight, ambientOn, performance.now(), dt) : bookLight;
+  applySeasonLight(W, paint);
   W.paperSun.userData.halo.material.opacity = 0.32 + 0.3 * lowP;
   S.dayC = uc;
   S.goldP = goldP;
   F.goldP = goldP;
   S.nightP = nightP;
   S.tod = nightP > 0.5 ? '夜' : (A < SUN_ARC.a0 ? '' : timeOfDayName(uc, TIMES));
-  W.gfx.scene.background.copy(BG0).lerp(BG1, nightP * 0.6);
 
   for (const t of W.terraces) {
     const p = t.spr.step(sstep(t.t0, t.t1, A), dt);
@@ -162,7 +151,7 @@ export function stepStage(W, dt) {
   const v = W.tmp.v;
   W.cabin.localToWorld(v.set(W.SILL_X, 1.1, 1.6));
   W.gfx.windowLight.position.copy(v);
-  W.doorPivot.rotation.y = -F.doorP * 1.95;
+  W.doorPivot.rotation.y = -F.doorP * 1.95 - doorNudgeYaw(S.tap.door);
   W.puffs.forEach((p, i) => {
     const ph = (T * 0.22 + p.ph) % 1;
     p.g.visible = cabinE > 0.9 && litP > 0.05;

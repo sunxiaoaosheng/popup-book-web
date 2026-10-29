@@ -79,6 +79,9 @@ class HealthTest(unittest.TestCase):
             self.assertIsInstance(frame["t"], (int, float))
             if frame["type"] == "angle":
                 self.assertIsInstance(frame["angle"], (int, float))
+                self.assertIsInstance(frame.get("light"), (int, float))
+            else:
+                self.assertNotIn("light", frame)
         finally:
             proc.terminate()
             try:

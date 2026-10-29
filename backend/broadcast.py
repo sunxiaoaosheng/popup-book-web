@@ -1,6 +1,12 @@
 """
 薄广播：从一个 AngleSource 读角度，按协议 v1 推给所有 WebSocket 客户端，并维护 /health。
 平滑、偏移、钳位在这里做，适配器只提供原始角度。
+
+旁边的可选字段都不改角度，读失败就省略，也不打断广播：
+- light：适配器的 read_light()
+- weight：角度源自己有 read_weight 就用它（回放），否则尝试 Force Touch
+- tap：适配器 pull_taps() 里已经分好类的轻拍，另发一帧
+网页发来的触控板轻点在 haptic.py。不认识的文本丢掉，连接不断。
 """
 
 import asyncio
@@ -8,13 +14,35 @@ import json
 import sys
 import time
 
+from haptic import handle_client_text, pulse_trackpad
 from health import Status, serve_health
-from protocol import angle_frame, heartbeat_frame
+from netbind import loopback_hosts
+from protocol import angle_frame, heartbeat_frame, tap_frames_from
+from sensors.ambient import read_source_light
+from sensors.force import WeightGate, open_weight
 
 try:
     import websockets
 except ImportError:
     sys.exit("缺少 websockets：请先 pip install websockets")
+
+
+def _send_taps(source, seq, t_ms, broadcast, status):
+    """把适配器已经分好类的轻拍发出去。波形不会出现在帧里。"""
+    pull = getattr(source, "pull_taps", None)
+    if not callable(pull):
+        return seq
+    try:
+        pulled = pull()
+    except Exception as e:
+        print(f"[bridge] 轻拍读取失败：{e}", file=sys.stderr)
+        return seq
+    stamp = t_ms() if callable(t_ms) else t_ms
+    seq, frames = tap_frames_from(pulled, seq, stamp, getattr(source, "mode", None))
+    for frame in frames:
+        broadcast(json.dumps(frame))
+        status.note_seq(frame["seq"])
+    return seq
 
 
 def serve(source, args):
@@ -28,11 +56,33 @@ def serve(source, args):
         source.close()
 
 
+def _frame_weight(port, gate, now):
+    try:
+        sample = port.read()
+    except Exception:
+        return None
+    try:
+        return gate.update(sample, now)
+    except Exception:
+        return None
+
+
 async def _run(source, args):
     status = Status(source.mode, args.hz)
+    weight_port = open_weight(source)
+    weight_gate = WeightGate()
+    try:
+        return await _loop(source, args, status, weight_port, weight_gate)
+    finally:
+        try:
+            weight_port.close()
+        except Exception:
+            pass
+
+
+async def _loop(source, args, status, weight_port, weight_gate):
     if serve_health(args.host, args.http_port, status) is None:
         return 1
-    print(f"[bridge] 健康检查 http://{args.host}:{args.http_port}/health")
 
     clients = set()
     boot = time.monotonic()
@@ -45,8 +95,12 @@ async def _run(source, args):
         status.set_clients(len(clients))
         print(f"[bridge] 网页已连接 ({len(clients)} 个客户端)")
         try:
-            async for _ in ws:
-                pass
+            async for raw in ws:
+                # 不认识的文本丢掉。轻点做不到时也不许把这条连接拆掉。
+                try:
+                    handle_client_text(raw, pulse_trackpad)
+                except Exception:
+                    pass
         except Exception:
             pass
         finally:
@@ -83,8 +137,11 @@ async def _run(source, args):
     seq = 0
     next_heart = time.monotonic()
 
-    async with ws_serve(handler, args.host, args.port):
-        print(f"[bridge] WebSocket 监听 ws://{args.host}:{args.port}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
+    hosts = loopback_hosts(args.host)
+    ws_host = hosts if len(hosts) > 1 else hosts[0]
+    shown = ", ".join(f"ws://[{h}]:{args.port}" if ":" in h else f"ws://{h}:{args.port}" for h in hosts)
+    async with ws_serve(handler, ws_host, args.port):
+        print(f"[bridge] WebSocket 监听 {shown}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
         next_t = time.time()
         while True:
             raw = source.read()
@@ -101,14 +158,26 @@ async def _run(source, args):
                     a = smoothed
                 a = max(0.0, min(args.clamp, a))
                 seq += 1
-                broadcast(json.dumps(angle_frame(seq, t_ms(), a)))
+                w = _frame_weight(weight_port, weight_gate, now)
+                frame = angle_frame(
+                    seq, t_ms(), a, source.mode,
+                    light=read_source_light(source),
+                    weight=w,
+                )
+                broadcast(json.dumps(frame))
                 status.note_angle(a, seq)
                 if time.time() - last_print > 1.0:
-                    print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f})", end="\r", flush=True)
+                    extra = ""
+                    if "light" in frame:
+                        extra += f"  light {frame['light']:.0f} lx"
+                    if "weight" in frame:
+                        extra += f"  weight {frame['weight']:.2f}"
+                    print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f}){extra}", end="\r", flush=True)
                     last_print = time.time()
+            seq = _send_taps(source, seq, t_ms, broadcast, status)
             if now >= next_heart:
                 seq += 1
-                broadcast(json.dumps(heartbeat_frame(seq, t_ms())))
+                broadcast(json.dumps(heartbeat_frame(seq, t_ms(), source.mode)))
                 status.note_seq(seq)
                 next_heart = now + 1.0
             next_t += interval

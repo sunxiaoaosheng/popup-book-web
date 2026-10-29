@@ -5,6 +5,8 @@ import { cut, box, polyShape, ellipseShape, paperGlow, addMat, makePine } from '
 import { PW, PH, FONT } from './state.js';
 import { SEASONS, SECRETS } from './story.js';
 import { buildMoon, buildStars, buildPaperSun, buildSunSlot, buildHorizon, buildConstellation } from './build-sky-bodies.js';
+import { CLOUD_RENDER_ORDER, CLOUD_Z } from './sky-order.js';
+import { createSkyMaterial } from './sky-gradient.js';
 
 export { SUN_ARC, sunAt, TIMES, DAWN_SKY, DAWN_GLOW, DUSK_GLOW, SUN_LOW } from './sky-data.js';
 
@@ -114,7 +116,7 @@ export function buildSky(W) {
   cover.receiveShadow = true;
   hinge.add(cover);
 
-  const skyMat = new THREE.MeshBasicMaterial({ color: '#f6c99b' });
+  const skyMat = createSkyMaterial();
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(PW - 0.4, PH - 0.35), skyMat);
   sky.position.set(0, PH / 2, 0.01);
   sky.receiveShadow = false;
@@ -181,6 +183,7 @@ export function buildSky(W) {
   cloudMesh.castShadow = false;
   cloudMesh.receiveShadow = true;
   cloudMesh.frustumCulled = false;
+  cloudMesh.renderOrder = CLOUD_RENDER_ORDER;
   backFace.add(cloudMesh);
   const cloudM = new THREE.Matrix4();
   const cloudP = new THREE.Vector3();
@@ -191,7 +194,7 @@ export function buildSky(W) {
     for (const c of clouds) {
       const ck = c.visible ? c.k : 0;
       for (const puff of c.puffs) {
-        cloudP.set(c.xNow + puff.dx * ck, c.y + puff.dy * ck, 0.08);
+        cloudP.set(c.xNow + puff.dx * ck, c.y + puff.dy * ck, CLOUD_Z);
         cloudS.set(puff.rx * ck, puff.ry * ck, ck || 0.0001);
         cloudM.compose(cloudP, cloudQ, cloudS);
         cloudMesh.setMatrixAt(i, cloudM);

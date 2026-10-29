@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { rnd } from './math.js';
 import { ellipseShape, polyShape, cut, rectShape, glowTex } from './materials.js';
+import { bindEyeRead, makeEyeRim } from './eye-read.js';
 import { PH } from './state.js';
 
 export const PCFG = [
@@ -50,7 +51,8 @@ export function buildCritters(W) {
     const hl = new THREE.Mesh(new THREE.ShapeGeometry(ellipseShape(0.04, 0.07, 0.03, 0.03), 10), new THREE.MeshBasicMaterial({ color: '#ffffff', depthTest: false, transparent: true }));
     hl.position.z = 0.003;
     e.add(hl);
-    e.children.forEach((c) => { c.renderOrder = 20; });
+    bindEyeRead(e, makeEyeRim(THREE, 0.22, 0.26, 21));
+    e.children.forEach((c) => { if (c !== e.userData.halo) c.renderOrder = 20; });
     seamEyes.add(e);
     seamEyes.userData.eyes.push({ g: e, ir, pu, hl });
   }

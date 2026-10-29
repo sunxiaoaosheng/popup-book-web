@@ -39,6 +39,7 @@ export function attachJournalWatch(W, tuning = TUNING) {
     }), tuning);
     const changed = updates.length > 0 && W.store.applyJournal(updates);
     const near = observed.near.filter((id) => !W.store.hasSecret(id));
+    S.journalNear = near;
     const key = near.join(',');
     if (key !== nearKey || changed) {
       nearKey = key;

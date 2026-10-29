@@ -8,6 +8,7 @@ import { stepKittenMode } from './kitten-machine.js';
 import { stepKittenMood } from './kitten-mood.js';
 import { applyKittenLook } from './kitten-look.js';
 import { applyEyeReadList } from './eye-read.js';
+import { lookUpBias } from './tap-machine.js';
 import { stepSeasonBeats } from './season-beats.js';
 
 export function stepKitten(W, dt) {
@@ -185,8 +186,9 @@ export function stepKitten(W, dt) {
     kitten.scale.set(sxs, sys, Math.min(sxs, sys));
     kitten.rotation.z = rz + (shiver ? 0.012 * Math.sin(T * 48) : 0);
     kitten.rotation.y = ry;
+    const lookUp = lookUpBias(S.tap.look);
     S.lookX = smooth(S.lookX, napVis ? 0 : lx, dt, 0.12);
-    S.lookY = smooth(S.lookY, napVis ? 0 : ly, dt, 0.12);
+    S.lookY = smooth(S.lookY, clamp((napVis ? 0 : ly) + lookUp, -1, 1), dt, lookUp ? 0.08 : 0.12);
     const peeking = peekP * (1 - hopP);
     K.body.scale.y = 1 + 0.02 * Math.sin(T * 2.1);
     K.head.position.y = 0.6 + 0.008 * Math.sin(T * 2.1 + 0.6) - 0.06 * sleepish;
@@ -343,4 +345,6 @@ export function stepKitten(W, dt) {
     applyKittenLook(K, S.kittenMood, T, S.kittenMode, F.hopP > 0.85 && S.chaseP < 0.05);
     applyEyeReadList(K.eyes, A);
   }
+  const lookUp = lookUpBias(S.tap.look);
+  if (lookUp) K.head.rotation.x -= lookUp * 0.7;
 }

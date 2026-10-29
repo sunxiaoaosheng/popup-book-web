@@ -113,6 +113,7 @@ export function attachDebug(W, input) {
       renderNow();
     },
     forceSeason(i) { W.setSeason(i, true); },
+    pushTap(kind, strength = 0.5) { input.pushTap(kind, strength); },
     beginSeason(i) { W.setSeason(i, false); },
     render() { renderNow(); },
     project(name) {
@@ -152,6 +153,12 @@ export function attachDebug(W, input) {
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
         seasonCatchup: !!S.seasonCatchup, revealOpen: !!S.revealOpen,
+        tap: {
+          cool: +S.tap.cool.toFixed(2), door: +S.tap.door.toFixed(2), look: +S.tap.look.toFixed(2),
+          petal: +S.tap.petal.toFixed(2), last: S.tap.last || '',
+        },
+        journalNear: (S.journalNear || []).slice(),
+        doorYaw: +W.doorPivot.rotation.y.toFixed(3),
         ritual: (SEASON.from !== SEASON.to && SEASON.t < 1) ? ritualKind(SEASON.to) : '',
         ritualAmp: +ritualIntensity(SEASON.t).toFixed(3),
         ritualFront: +ritualFront(SEASON.t).toFixed(3),

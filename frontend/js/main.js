@@ -8,6 +8,7 @@ import { createWorld } from './world.js';
 import { bindActions } from './actions.js';
 import { wirePlay } from './play-wire.js';
 import { wireKitten } from './kitten-wire.js';
+import { wireTap } from './tap-wire.js';
 import { createPerfPanel } from './perf-panel.js';
 import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
@@ -32,6 +33,7 @@ W.watchJournal = attachJournalWatch(W);
 bindActions(W);
 wirePlay(W);
 wireKitten(W);
+wireTap(W);
 const perfPanel = createPerfPanel();
 
 W.ambient = createAmbientClock();
@@ -53,7 +55,9 @@ const share = attachShare(W);
 function isMoving() {
   const show = W.stageSnap;
   const curtain = show && (show.sweepGlow > 0.03 || show.flash > 0.03 || show.bow > 0.04);
-  return curtain || S.sp > 1.2 || Math.abs(S.hinge.v) > 0.5 || Math.abs(S.sunU.v) > 0.02 || S.flutT > 0 || S.burstT > 0 || S.slamT > 0;
+  const tap = S.tap;
+  const tapped = tap && (tap.petal > 0 || tap.door > 0 || tap.look > 0);
+  return curtain || tapped || S.sp > 1.2 || Math.abs(S.hinge.v) > 0.5 || Math.abs(S.sunU.v) > 0.02 || S.flutT > 0 || S.burstT > 0 || S.slamT > 0;
 }
 
 const perf = W.gfx.perf;

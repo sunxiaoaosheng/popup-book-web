@@ -30,7 +30,8 @@
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
 | `frontend/js/stage-show.js` `stage-show-view.js` | 开场幕布。角度决定暗角和纸片折痕，不判秘密 |
 | `frontend/js/kitten-memory.js` `kitten-mood.js` `kitten-lines.js` | 小猫的记性、心情、闲置小动作。纯逻辑，单测在 `tests/unit/kitten-mood.test.js`。画面在 `kitten-look.js`，存档订阅在 `kitten-wire.js` |
-| `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
+| `frontend/js/protocol.js` | 角度流解析、轻拍帧（kind + strength）、序号门、连接状态（过期 / 断开） |
+| `frontend/js/tap-machine.js` `tap-accent.js` `tap-petals.js` `tap-wire.js` | 轻拍和连敲。判定不碰网格；花瓣点缀单独画，不占用换季扫场 |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
 | `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
@@ -175,6 +176,14 @@
 - 打开之后，如果桥在角度帧里带了房间的光，天空会缓到对应的那一档：暗是夜，亮是白天，中间是黄昏。灯在门槛上来回时不会一下一下地闪。合页仍然管开合、日晷和小秘密。没有读数时不提示，天空继续用书里的时间。
 - 假角度会自己把光从夜走到白天再走回来，大约 28 秒一圈。想钉住某一档，可以在启动前设 `POPUP_LUX`（例如 `5` 是夜，`800` 是白天）。手感数字在 `frontend/js/tuning.js` 的 `ambient`。
 
+## 二·十八、轻拍一下，或敲两下、三下（不剧透版）
+
+- 轻轻拍一下，小屋的门会动一下，小猫抬头看你。拍得重一点，它会害羞，和被猛地合上时是同一种害羞，但书还开着。
+- 已经靠近某张还没揭开的贴纸时，连敲两下会把那一张揭开。附近没有，就没有。
+- 连敲三下，门前会扬起一小团花瓣，大约半秒多，然后消失。这不是换季时横着扫过书页的那一道。
+- 这些动作大约每秒只听一次。换季正在补播、或开场幕布还没演完时，拍和敲都不算。
+- 桥只告诉网页「是哪一种、有多用力」，不把原始波形送过来。没有传感器时，可以用 `1` / `2` / `3` / `4` 在页面上试。数字在 `frontend/js/tuning.js` 的 `tap*`。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -256,7 +265,7 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 
 **不要双击 `frontend/index.html`（file://）**。ES module 会被拦，页面是黑的。
 
-快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 贴纸本，`Esc` 关贴纸本或集齐画面，`C` 分享今天的小屋。
+快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 贴纸本，`Esc` 关贴纸本或集齐画面，`C` 分享今天的小屋。开发时 `1` 轻拍、`2` 连敲两下、`3` 连敲三下、`4` 重拍（和桥上的 tap 帧走同一条判定）。
 URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?shareclip=1` 分享时一并录短片（默认不录）；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 

@@ -26,9 +26,10 @@ export function createInput(W) {
   let userAuto = null;
   let bridgeMode = '';
   let autoT = 0;
-  let latest = null;
-  let seq = 0;
-  let seen = -1;
+  /** @type {string[]} */
+  const inbound = [];
+  /** @type {{kind:string, strength:number}[]} */
+  const taps = [];
   let timer = 0;
   let stopped = false;
   let sensorHold = false;
@@ -48,10 +49,21 @@ export function createInput(W) {
     setAngle(angle);
   }
 
+  function pushTap(kind, strength) {
+    taps.push({ kind, strength });
+    if (taps.length > 8) taps.splice(0, taps.length - 8);
+  }
+
+  function takeTaps() {
+    if (!taps.length) return [];
+    const out = taps.slice();
+    taps.length = 0;
+    return out;
+  }
+
   function acceptRaw(raw) {
-    if (latest !== null && seq !== seen) W.net.coalesced += 1;
-    latest = raw;
-    seq += 1;
+    if (inbound.length) W.net.coalesced += 1;
+    inbound.push(raw);
     // 合严后标签页隐藏，rAF 不再把中间角度排空。低于 closeBelow 的样本在这里记下。
     if (document.hidden) rememberHiddenAngle(raw);
   }
@@ -125,26 +137,34 @@ export function createInput(W) {
   }
 
   function drain() {
-    if (seq === seen || latest == null) return;
-    const s = seq;
-    const raw = latest;
-    seen = s;
-    try {
-      const frame = parseAngleMessage(raw);
+    if (!inbound.length) return;
+    const batch = inbound.splice(0, inbound.length);
+    let angle = null;
+    for (const raw of batch) {
+      let frame;
+      try { frame = parseAngleMessage(raw); } catch { continue; }
       if (!frame || !gate.accept(frame)) {
         if (frame) W.net.dropped += 1;
-      } else if (frame.type === 'heartbeat') {
-        noteMode(frame.mode);
-      } else if (frame.type === 'angle') {
-        lastAngleAt = performance.now();
-        noteMode(frame.mode);
-        noteLink();
-        // 环境光跟着角度帧走，不改角度由谁驱动。没有 light 就保持上一拍，过期由时钟自己丢。
-        if (frame.light != null && W.ambient) W.ambient.note(frame.light, lastAngleAt);
-        const src = driver();
-        if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (frame.angle));
+        continue;
       }
-    } catch { /* 忽略坏帧 */ }
+      if (frame.type === 'heartbeat') {
+        noteMode(frame.mode);
+      } else if (frame.type === 'tap') {
+        noteMode(frame.mode);
+        if (frame.kind && typeof frame.strength === 'number') pushTap(frame.kind, frame.strength);
+      } else if (frame.type === 'angle') {
+        noteMode(frame.mode);
+        angle = frame;
+      }
+    }
+    if (angle && angle.angle != null) {
+      lastAngleAt = performance.now();
+      noteLink();
+      // 环境光跟着角度帧走，不改角度由谁驱动。没有 light 就保持上一拍，过期由时钟自己丢。
+      if (angle.light != null && W.ambient) W.ambient.note(angle.light, lastAngleAt);
+      const src = driver();
+      if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (angle.angle));
+    }
     noteLink();
   }
 
@@ -176,6 +196,8 @@ export function createInput(W) {
     if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('nohud');
     if (e.key === 'ArrowRight') { setAngle(S.target + 2); slider.value = S.target; }
     if (e.key === 'ArrowLeft') { setAngle(S.target - 2); slider.value = S.target; }
+    const dev = devTap(e);
+    if (dev) pushTap(dev.kind, dev.strength);
   });
 
   connect();
@@ -237,6 +259,8 @@ export function createInput(W) {
   return {
     tick, maybeHud, refreshHud, setAngle, WS_URL,
     pushRaw: acceptRaw,
+    pushTap,
+    takeTaps,
     holdSensor(on) {
       sensorHold = !!on;
       if (sensorHold) noteLink();
@@ -245,6 +269,18 @@ export function createInput(W) {
     get link() { return link; },
     get ws() { return ws; },
   };
+}
+
+/** 开发时用键盘模拟已经分好类的轻拍。1 轻拍，2 连敲两下，3 连敲三下，4 重拍。 */
+function devTap(e) {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return null;
+  const el = e.target;
+  if (el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'range'))) return null;
+  if (e.key === '1') return { kind: 'slap', strength: TUNING.tapKeyLight };
+  if (e.key === '2') return { kind: 'double-knock', strength: TUNING.tapKeyKnock };
+  if (e.key === '3') return { kind: 'triple-knock', strength: TUNING.tapKeyKnock };
+  if (e.key === '4') return { kind: 'slap', strength: TUNING.tapKeyStrong };
+  return null;
 }
 
 /** 和页面同一个主机名。localhost 在 macOS 上会先走 ::1，WebSocket 又不像 HTTP 那样回退，所以固定走 127.0.0.1。 */

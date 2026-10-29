@@ -10,13 +10,31 @@ import time
 
 from health import Status, serve_health
 from netbind import loopback_hosts
-from protocol import angle_frame, heartbeat_frame
+from protocol import angle_frame, heartbeat_frame, tap_frames_from
 from sensors.ambient import read_source_light
 
 try:
     import websockets
 except ImportError:
     sys.exit("缺少 websockets：请先 pip install websockets")
+
+
+def _send_taps(source, seq, t_ms, broadcast, status):
+    """把适配器已经分好类的轻拍发出去。波形不会出现在帧里。"""
+    pull = getattr(source, "pull_taps", None)
+    if not callable(pull):
+        return seq
+    try:
+        pulled = pull()
+    except Exception as e:
+        print(f"[bridge] 轻拍读取失败：{e}", file=sys.stderr)
+        return seq
+    stamp = t_ms() if callable(t_ms) else t_ms
+    seq, frames = tap_frames_from(pulled, seq, stamp, getattr(source, "mode", None))
+    for frame in frames:
+        broadcast(json.dumps(frame))
+        status.note_seq(frame["seq"])
+    return seq
 
 
 def serve(source, args):
@@ -114,6 +132,7 @@ async def _run(source, args):
                         extra = f"  light {frame['light']:.0f} lx"
                     print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f}){extra}", end="\r", flush=True)
                     last_print = time.time()
+            seq = _send_taps(source, seq, t_ms, broadcast, status)
             if now >= next_heart:
                 seq += 1
                 broadcast(json.dumps(heartbeat_frame(seq, t_ms(), source.mode)))

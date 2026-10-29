@@ -1,6 +1,9 @@
 """
 薄广播：从一个 AngleSource 读角度，按协议 v1 推给所有 WebSocket 客户端，并维护 /health。
 平滑、偏移、钳位在这里做，适配器只提供原始角度。
+
+力度是旁边的可选字段。角度源自己有 read_weight 就用它（回放），
+否则尝试 Force Touch。读不到就省略 weight，不改角度，也不打断广播。
 """
 
 import asyncio
@@ -9,7 +12,9 @@ import sys
 import time
 
 from health import Status, serve_health
+from netbind import loopback_hosts
 from protocol import angle_frame, heartbeat_frame
+from sensors.force import WeightGate, open_weight
 
 try:
     import websockets
@@ -28,11 +33,33 @@ def serve(source, args):
         source.close()
 
 
+def _frame_weight(port, gate, now):
+    try:
+        sample = port.read()
+    except Exception:
+        return None
+    try:
+        return gate.update(sample, now)
+    except Exception:
+        return None
+
+
 async def _run(source, args):
     status = Status(source.mode, args.hz)
+    weight_port = open_weight(source)
+    weight_gate = WeightGate()
+    try:
+        return await _loop(source, args, status, weight_port, weight_gate)
+    finally:
+        try:
+            weight_port.close()
+        except Exception:
+            pass
+
+
+async def _loop(source, args, status, weight_port, weight_gate):
     if serve_health(args.host, args.http_port, status) is None:
         return 1
-    print(f"[bridge] 健康检查 http://{args.host}:{args.http_port}/health")
 
     clients = set()
     boot = time.monotonic()
@@ -83,8 +110,11 @@ async def _run(source, args):
     seq = 0
     next_heart = time.monotonic()
 
-    async with ws_serve(handler, args.host, args.port):
-        print(f"[bridge] WebSocket 监听 ws://{args.host}:{args.port}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
+    hosts = loopback_hosts(args.host)
+    ws_host = hosts if len(hosts) > 1 else hosts[0]
+    shown = ", ".join(f"ws://[{h}]:{args.port}" if ":" in h else f"ws://{h}:{args.port}" for h in hosts)
+    async with ws_serve(handler, ws_host, args.port):
+        print(f"[bridge] WebSocket 监听 {shown}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
         next_t = time.time()
         while True:
             raw = source.read()
@@ -101,14 +131,15 @@ async def _run(source, args):
                     a = smoothed
                 a = max(0.0, min(args.clamp, a))
                 seq += 1
-                broadcast(json.dumps(angle_frame(seq, t_ms(), a)))
+                w = _frame_weight(weight_port, weight_gate, now)
+                broadcast(json.dumps(angle_frame(seq, t_ms(), a, source.mode, w)))
                 status.note_angle(a, seq)
                 if time.time() - last_print > 1.0:
                     print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f})", end="\r", flush=True)
                     last_print = time.time()
             if now >= next_heart:
                 seq += 1
-                broadcast(json.dumps(heartbeat_frame(seq, t_ms())))
+                broadcast(json.dumps(heartbeat_frame(seq, t_ms(), source.mode)))
                 status.note_seq(seq)
                 next_heart = now + 1.0
             next_t += interval

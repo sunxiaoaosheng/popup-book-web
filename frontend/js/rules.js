@@ -87,6 +87,31 @@ export function closeKind(closeMax, tuning = TUNING) {
 }
 
 /**
+ * 页面藏起来时动画帧会停，socket 上合严的角度若不当场记下，
+ * 再打开时最新一帧已经是张开的角度，这次合盖就丢了。
+ * track 是这一段隐藏期间的时间戳、上一个角度、已看到的最大角速度。
+ * 只有已经打开过（armed）才把 lidShut 置上。没有速度样本时用普通合盖，避免误判晚安。
+ * @param {{armed:boolean, lidShut:boolean, closeMax:number}} S
+ * @param {{t:number|null, a:number|null, max:number}} track
+ * @param {number} angle
+ * @param {number} nowMs
+ * @param {typeof TUNING} [tuning]
+ */
+export function noteHiddenClose(S, track, angle, nowMs, tuning = TUNING) {
+  let max = track.max || 0;
+  if (track.t != null && track.a != null) {
+    const dt = (nowMs - track.t) / 1000;
+    if (dt > 0.001 && dt < 1) max = Math.max(max, Math.abs(angle - track.a) / dt);
+  }
+  if (angle < tuning.closeBelow && S.armed) {
+    S.lidShut = true;
+    const neutral = (tuning.gentleBelow + tuning.slamAbove) / 2;
+    S.closeMax = max > 0 ? max : neutral;
+  }
+  return { t: nowMs, a: angle, max };
+}
+
+/**
  * @param {number} speed
  * @param {number} angle
  * @param {typeof TUNING} [tuning]

@@ -62,7 +62,20 @@ def main():
             a2 = pg.evaluate("__popup.S.target")
             live = pg.evaluate("__popup.dbg().net.link")
             text = pg.inner_text("#srcText")
-            check("假桥 v1 带动角度且显示已连接", live == "live" and a1 != a2 and "传感器已连接" in text, f"{a1:.1f}→{a2:.1f} {live} {text}")
+            btn = pg.inner_text("#auto")
+            check("假桥 v1 带动角度且自动演示开着", live == "live" and a1 != a2 and "停止演示" in btn and "自动演示" in text, f"{a1:.1f}→{a2:.1f} {live} {btn} {text}")
+            pg.click("#auto")
+            pg.wait_for_timeout(300)
+            held = pg.evaluate("__popup.S.target")
+            pg.wait_for_timeout(600)
+            held2 = pg.evaluate("__popup.S.target")
+            manual = pg.evaluate("() => !document.getElementById('slider').disabled && document.getElementById('auto').textContent.includes('自动演示') && !document.getElementById('auto').textContent.includes('停止')")
+            check("关掉自动演示后滑块接管", manual and abs(held2 - held) < 1.0, f"{held:.1f}→{held2:.1f} {pg.inner_text('#auto')} {pg.inner_text('#srcText')}")
+            pg.click("#auto")
+            pg.wait_for_timeout(200)
+            back = pg.inner_text("#auto")
+            disabled = pg.evaluate("() => document.getElementById('slider').disabled")
+            check("再打开自动演示", "停止演示" in back and disabled, back)
             pg.close()
 
             q = b.new_page(viewport={"width": 1280, "height": 800})
@@ -80,6 +93,38 @@ def main():
             q.evaluate("__popup.setAngle(45); __popup.settle(0.3)")
             pose = q.evaluate("() => { let best = 0; for (let i = 0; i < 90; i++) { __popup.settle(1/30); best = Math.max(best, __popup.dbg().dawnPose); } return best; }")
             check("清晨伸懒腰", pose > 0.8 and q.evaluate("__popup.dbg().dawnStretch") > 0.8, f"pose={pose}")
+
+            track = q.evaluate("""() => {
+              __popup.setAngle(105);
+              __popup.settle(2);
+              const before = __popup.dbg().track;
+              __popup.setWeight(0.5);
+              __popup.settle(0.9);
+              const mid = __popup.dbg();
+              __popup.settle(1.4);
+              const on = __popup.dbg().track;
+              __popup.setWeight(0);
+              __popup.settle(1.6);
+              const off = __popup.dbg().track;
+              return {
+                before, mid: mid.track, mood: mid.moodCap || '', on, off,
+                hinge: !!mid.hinge, scale: !!document.querySelector('#scale, #weight, .scale'),
+              };
+            }""")
+            check(
+                "窗台礼物闻一下再收回",
+                track["before"]["phase"] == "idle"
+                and track["mid"]["phase"] == "sniff"
+                and "闻了闻" in track["mood"]
+                and track["on"]["phase"] == "held"
+                and track["on"]["gift"] > 0.5
+                and track["on"]["sniff"] < 0.05
+                and track["off"]["phase"] == "idle"
+                and track["off"]["gift"] < 0.15
+                and track["hinge"]
+                and not track["scale"],
+                str(track),
+            )
 
             q.evaluate("__popup.setAngle(8); __popup.settle(4.5)")
             q.evaluate("__popup.setAngle(90); __popup.settle(1.2)")

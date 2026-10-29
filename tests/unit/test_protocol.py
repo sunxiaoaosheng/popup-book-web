@@ -22,11 +22,33 @@ class ProtocolTest(unittest.TestCase):
         again["unrelated"] = {"keep": True}
         self.assertEqual(again["angle"], 87.26)
 
+    def test_mode_is_optional(self):
+        plain = angle_frame(1, 1, 1)
+        self.assertNotIn("mode", plain)
+        self.assertEqual(angle_frame(1, 1, 1, "sensor")["mode"], "sensor")
+        self.assertEqual(heartbeat_frame(2, 3, "fake")["mode"], "fake")
+        self.assertNotIn("mode", heartbeat_frame(2, 3))
+
     def test_heartbeat_has_no_angle(self):
         beat = heartbeat_frame(4, 1000)
         self.assertEqual(beat["type"], "heartbeat")
         self.assertNotIn("angle", beat)
+        self.assertNotIn("weight", beat)
         self.assertGreater(beat["seq"], 0)
+
+    def test_weight_is_optional_and_does_not_replace_angle(self):
+        plain = angle_frame(1, 1, 10)
+        self.assertNotIn("weight", plain)
+        self.assertEqual(plain["angle"], 10)
+        framed = angle_frame(2, 3, 12.5, "sensor", 0.424)
+        self.assertEqual(framed["angle"], 12.5)
+        self.assertEqual(framed["mode"], "sensor")
+        self.assertEqual(framed["weight"], 0.42)
+        self.assertEqual(angle_frame(1, 1, 4, weight=0)["weight"], 0.0)
+        self.assertNotIn("weight", angle_frame(1, 1, 4, weight=None))
+        self.assertNotIn("weight", angle_frame(1, 1, 4, weight="heavy"))
+        self.assertEqual(angle_frame(1, 1, 4, weight=-0.2)["weight"], 0.0)
+        self.assertEqual(angle_frame(1, 1, 4, weight=3)["weight"], 1.0)
 
     def test_health_shape(self):
         body = health_body("fake", 2, 12.5, 40, 9, 45)

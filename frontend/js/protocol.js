@@ -1,6 +1,7 @@
 /**
  * 合页角度流，协议版本 1。纯解析，不碰 WebSocket。
- * 字段说明见 docs/PROTOCOL.md。未知字段忽略；旧的 {"angle": n} 仍接受。
+ * 字段说明见 docs/PROTOCOL.md。未知字段忽略；可选 weight 缺着就是 null。
+ * 旧的 {"angle": n} 仍接受。
  */
 
 export const PROTOCOL_VERSION = 1;
@@ -16,6 +17,8 @@ export const STALE_MS = 1500;
  * @property {number|null} seq
  * @property {number|null} t 桥进程内的单调毫秒
  * @property {boolean} legacy
+ * @property {string} mode 桥的模式；旧帧为空串
+ * @property {number|null} weight 可选的归一化静置力度。缺省、非法都是 null，不是 0
  */
 
 /**
@@ -38,15 +41,25 @@ export function parseAngleMessage(raw) {
   const declared = typeof obj.type === 'string' ? obj.type : '';
   const angleOk = typeof obj.angle === 'number' && Number.isFinite(obj.angle);
   const legacy = obj.v == null && obj.seq == null && obj.t == null && obj.type == null;
+  const mode = typeof obj.mode === 'string' ? obj.mode : '';
+  const weight = readWeight(obj);
 
   if (declared === 'heartbeat') {
-    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false };
+    return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode, weight };
   }
   if (declared === 'angle' || (declared === '' && angleOk) || (declared !== '' && declared !== 'angle' && angleOk)) {
     if (!angleOk) return null;
-    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy };
+    return { v, type: 'angle', angle: /** @type {number} */ (obj.angle), seq, t, legacy, mode, weight };
   }
   return null;
+}
+
+/** 缺字段或不是有限数字 → null。0 是空板，要留下来。 */
+function readWeight(obj) {
+  if (!Object.prototype.hasOwnProperty.call(obj, 'weight')) return null;
+  const w = obj.weight;
+  if (typeof w !== 'number' || !Number.isFinite(w)) return null;
+  return w;
 }
 
 /**

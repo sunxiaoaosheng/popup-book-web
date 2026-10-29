@@ -4,6 +4,7 @@ import { Spring, rnd } from './math.js';
 import { cut, polyShape, ellipseShape, paperGlow, edgeMat, addMat } from './materials.js';
 import { PW } from './state.js';
 import { sunAt } from './sky-data.js';
+import { biasSunBehind } from './sky-order.js';
 
 export function buildMoon(backFace) {
   const moon = new THREE.Group();
@@ -107,6 +108,7 @@ export function buildPaperSun(backFace) {
   halo.position.z = 0.04;
   paperSun.add(halo);
   paperSun.userData = { rays: rayM, halo, face };
+  biasSunBehind(paperSun);
   return paperSun;
 }
 

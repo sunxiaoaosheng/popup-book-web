@@ -14,7 +14,7 @@
 
 卡顿写在 `PERFORMANCE.md`。角度帧写在 `docs/PROTOCOL.md`。模块怎么分写在 `docs/ARCHITECTURE.md`。
 
-**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（提示在游戏里的"📖 小秘密"手账中，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
+**现在是 v9，穿模和后台启动在标签 `fixed-v10`。** 玩法仍是那本会回应你的书：开得快慢、停多久、晃不晃、怎么合上，它都有不同的反应；四季随着每次开合轮换；还藏了 8 个小秘密（v4 新增 1 个）等你自己发现（贴纸本一开始是空的，靠近了才露出提示，**答案放在文末"剧透"章节，想自己玩的话别往下翻**）。v8 把判定收成状态机，把角度来源收成适配器。手感数字仍在 `frontend/js/tuning.js`。春、冬各多了一句季节反应，不进手账。v9 加上 Homebrew formula 和未签名的打包脚本，仍然不签名、不上架。
 
 ## 一、文件
 
@@ -22,20 +22,26 @@
 
 | 路径 | 说明 |
 |---|---|
-| `frontend/` | 静态页。`index.html`、`styles.css`、`js/`（ES modules，不用打包） |
+| `frontend/` | 静态页。`index.html`、`styles.css`、`js/`（ES modules，不用打包）、`assets/icons/`（标题栏 / Apple Touch 用的圆形图标） |
 | `frontend/vendor/three.module.js` | Three.js r160，随仓库走，**离线可用** |
 | `frontend/js/story.js` | 数据：小秘密的名字/提示、四季设定与晚安台词 |
 | `frontend/js/tuning.js` | 手感阈值（`TUNING`）。改判定先改这里 |
 | `frontend/js/rules.js` | 纯判定：换季进度、时段、停住带、一整天、合盖快慢。不引用 Three |
 | `frontend/js/play-machine.js` `kitten-machine.js` `season-machine.js` `season-beats.js` | 状态机。结果经 `bus.js` 交给声音和字幕 |
+| `frontend/js/stage-show.js` `stage-show-view.js` | 开场幕布。角度决定暗角和纸片折痕，不判秘密 |
+| `frontend/js/kitten-memory.js` `kitten-mood.js` `kitten-lines.js` | 小猫的记性、心情、闲置小动作。纯逻辑，单测在 `tests/unit/kitten-mood.test.js`。画面在 `kitten-look.js`，存档订阅在 `kitten-wire.js` |
 | `frontend/js/protocol.js` | 角度流解析、序号门、连接状态（过期 / 断开） |
 | `frontend/js/audio.js` | WebAudio 纯合成音效（没有任何音频文件） |
+| `frontend/js/hinge-feel.js` `hinge-audio.js` `sim-feel.js` | 合页动手感：角速度映射成嘎吱、纸声、轻撞和镜头微晃。强度记在存档 `feel` |
+| `frontend/js/track-weight.js` `track-weight-view.js` `track-weight-wire.js` | 触控板力度是窗台上的低频礼物。稳定一下小猫闻一闻，拿开就收回。没有读数就当没有这回事。不画秤 |
 | `frontend/js/store.js` | `localStorage` 适配。存档逻辑在 `store-core.js` |
-| `frontend/js/ui.js` | DOM：音效按钮、手账、提示气泡、"别动"进度环、晚安结尾 |
+| `frontend/js/ui.js` | DOM：音效按钮、手感、贴纸本、提示气泡、"别动"进度环、晚安结尾 |
+| `frontend/js/share-layout.js` `share-border.js` `share-draw.js` `share-capture.js` `share-wire.js` | 分享卡。排版和文案不碰画面；抓像素、下载、短片分开。没点分享时不读像素 |
+| `frontend/js/journal-hints.js` `journal-book.js` `journal-watch.js` `sticker-art.js` | 贴纸本：靠近才提示、八格手绘贴纸、揭开和集齐 |
 | `frontend/js/gfx.js` `build-*.js` `sim-*.js` `input.js` `season.js` | 场景、昼夜、小猫、输入、帧循环。入口是 `js/main.js` |
 | `backend/bridge.py` | 选择适配器。`--fake` / `--replay` / 真实合页 |
 | `backend/broadcast.py` `backend/health.py` | 协议 v1 广播和 `GET /health` |
-| `backend/sensors/` | 角度适配器。契约在 `docs/ADAPTERS.md` |
+| `backend/sensors/` | 角度适配器。契约在 `docs/ADAPTERS.md`。`force.py` 是可选力度，不是合页 |
 | `backend/protocol.py` | 角度帧、心跳、`/health` 的字段 |
 | `backend/requirements.txt` | 假桥只要 `websockets` |
 | `backend/requirements-sensor.txt` | 真实传感器再加 `pybooklid` |
@@ -116,6 +122,61 @@
 - `P` 键打开性能面板（帧时间、draw call、像素比）。标签页隐藏时不画。
 - 桥可以 `--replay trace.jsonl` 重放一段角度。见 `docs/ADAPTERS.md`。
 
+## 二·十一、分享今天的小屋
+
+左上角「分享」，或按 `C`，把当前这一帧做成一张卡片：手绘边、季节和时段、一句小猫的话、小秘密 N/8、书名小印。图片会下载；浏览器允许的话也会复制到剪贴板。默认只存这张 PNG。要连一段大约 4 秒的短片一起保存，先点「短片」，或打开页面时加上 `?shareclip=1`。合页、滑块、自动演示都是当时画面上的那一帧。
+
+没点分享时，主循环只看有没有在录短片，不去读像素，也不打开 `preserveDrawingBuffer`。面板被 `H` 藏起来之后，`C` 仍然可以分享。
+
+## 二·十二、动手感（不剧透版）
+
+- 盖子转得越快，铰链越嘎吱，纸页的沙沙也越满。经过直角、开到头、合严，各有一下很轻的撞击。慢到几乎不动时这些声音会歇下来。
+- 镜头跟着速度有一点微晃、视差和视场呼吸，幅度有上限，并且是平滑的，不会晃得难受。左上角「手感」或 `K` 可以改成低、或关掉。选择会记住。
+- `M` 静音仍然关掉全部声音，包括这层拟音。关掉手感只停掉这层声音和镜头偏移，森林和猫咪的声音还在。
+- 数字在 `frontend/js/tuning.js` 的 `HINGE_FEEL`。真实合页和滑块走的是同一条曲线。
+
+## 二·十三、开场：合盖是幕布（不剧透版）
+
+- 这一档**第一次**把盖子打开，画面像幕布被盖子掀起来。合着的时候上下是暗的，中间留一道缝；再往上，纸地、松林、小屋还留着一点折痕。盖子**第一次过大约 90°**，一道暖光扫过全场，暗角松开，纸片按地面、树、小屋、窗台、小猫的顺序弹到位。
+- 同一档之后再翻开，只留很轻的一道。轻轻合上，幕布慢慢跟上；合得很快，幕布贴着盖子落下，并闪一下。手账里的小秘密没有新的一条，触发方式也没改。
+- 看过首演会记在存档里（`stageShown`）。清空手账，或地址加上 `?reset=1`，会再演一次整场。手感在 `frontend/js/tuning.js` 的 `stage*`。
+
+## 二·十四、季节仪式（花瓣 / 蝉雾 / 落叶 / 雪锋）
+
+合上再慢慢打开时，换季不再只是树色在变。大约 22°–65°，一道粒子从书页一侧扫到另一侧，扫完就收掉：
+
+- 进入春天：花瓣
+- 进入夏天：萤火虫，再加一层薄蝉雾
+- 进入秋天：叶子打着旋
+- 进入冬天：一道雪锋
+
+同一段里会响一句现场合成的短动机（春往上走、夏有蝉鸣的颤音、秋往下落、冬是稀疏的高音）。没有音频文件。先点一下页面或左上角 🔊 才会出声。
+
+把盖子合严时屏幕会灭、页面暂停绘制。合到约 5° 以下仍会计上这一次（季节 +1）。再慢慢打开，就能看见上面的扫场。若合严后进了锁屏，要等最新的盖子角度进了页面，才决定要不要补播：解开时已经开过 22°，纸页会跟着扫场一起张开，大约 1.8 秒走完，不先弹开。中途再合到 22° 以下，这场就停。短动机若当时还不能出声，等下一次盖子动了再补。页面一直开着、慢慢翻过这段，仍按盖子角度走。
+
+天空按季节和时刻拉开：清晨、正午、黄昏、夜里的天顶、天边和光色都不一样。晨昏时天边再亮一档。树、道具、行头仍是原来的材质插值，换季不重建几何。手感数字在 `frontend/js/tuning.js` 的 `ritualBand` / `ritualParticles` / `ritualHaze` / `ritualMotifVol` / `ritualTwilight`。这不是新的小秘密，手账还是 8 条。
+
+## 二·十五、贴纸本（不剧透）
+
+- 左上角还是「📖 小秘密 N/8」，按 `J` 打开。八个格子一开始是空白贴纸，不再把八条提示一起摊开。
+- 盖子停在某条秘密附近，或那一带你来回试过几次，格子才会先亮起一句「快了」。再试过几次，才写下原来那句含蓄提示。秘密什么时候算找到，规则没变。
+- 找到的那一张会揭开贴上去。八张都有了，会放一次集齐；之后打开贴纸本仍是集齐的样子，可以再看一次。进度写在原来的存档里。
+- 手感数字在 `frontend/js/tuning.js` 的 `TUNING`（`stickerBandPad`、`stickerAttemptsForHint` 等）。
+
+## 二·十六、小猫会记得你（不剧透版）
+
+- 记性写在原来的浏览器存档里。第一次见面、隔了几个小时、换了一天再打开，它打招呼的话不一样。刚刷新页面不会反复寒暄。
+- 心情会变：在它出来玩的角度停大约 9 秒，它会闭上眼、头上冒出很大的 Zzz；把盖子轻轻抖大约 1° 就伸个懒腰醒过来。四十五分钟里打开够三次，它会兴奋；二十分钟内被猛地合上过，它会把耳朵压平、脸红。手账仍是 8 条，秘密的触发角度没有改。
+- 醒着时眨眼、歪头、舔爪子会换着来，不会按同一个圈循环。偶尔冒出一句很短的话。这些话让路给秘密和换季字幕。落点没改，仍在门洞里和台阶之间的平地上。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.kitten`。
+
+## 二·十七、窗台上的一份重量（不剧透版）
+
+- 带 Force Touch 的触控板可以当一个很轻的礼物：把一样小东西在板上放稳，窗台上会多出一只小纸盒，小猫凑过去闻一下，然后照旧蹲着。拿开，纸盒离开，它把鼻子收回来。
+- 这不是秤。页面上没有克数，也没有仪表。力度只是角度帧上一个可有可无的 `weight`（0 到 1）。没有这块触控板、或桥没带上这个字段时，书和以前一样，不会报错。
+- 合页还是合页。滑块、假角度、真实盖角都不变。东西一直放着不会反复闻；拿开再放，也要隔一会儿。
+- 数字在 `frontend/js/tuning.js` 的 `TUNING.trackWeight`。真机上的 Force Touch 读数还没核对过。
+
 ## 三、运行
 
 ### 怎么开、怎么停
@@ -136,7 +197,7 @@
 
 后台启动不会问 `[y/n]`，缺的 Python 依赖会直接装。`.app` 里的启动器设了 `POPUP_FOREGROUND=1`，那个进程留在前台，方便系统把它当成正在运行的应用；另开终端仍可以用仓库里的 `./start.sh stop`（pid 写在包内的 `logs/`）。
 
-默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:8000>）。左下圆点变绿，滑块被禁用，书跟着 0→130→0 开合。
+默认是**假角度桥 + 静态页**。浏览器打开脚本打印的地址（默认 <http://127.0.0.1:19081/?ws=ws://127.0.0.1:19876>），一次即可，不用连刷。脚本会等静态页和桥都开始听（本机有 IPv6 时包括 `::1`）才打印这行。左下圆点变绿，按钮是「■ 停止演示」，书跟着 0→130→0 开合。再点一次按钮，扫角停住，滑块可以拖。`./start.sh --sensor` 不会打开这段演示，合页角度直接驱动书。
 
 同一模式再执行一次：服务还健康的话只打印地址，不会占第二个端口。
 
@@ -148,7 +209,7 @@
 ./start.sh --no-docker              # 本机 python，不建容器
 ./start.sh --docker                 # 必须用 Docker
 ./start.sh --restart                # 停掉上次的进程/容器再启动
-./start.sh --port 8123 --ws-port 8765
+./start.sh --port 8123 --ws-port 19876
 ./start.sh --sensor --smooth 0.5 --offset -3
 ./start.sh stop
 ./start.sh test --yes              # ESLint、tsc、单元测试、无头冒烟
@@ -197,20 +258,20 @@ Docker 可用时，静态页和假桥进容器（`docker/Dockerfile.web`、`dock
 
 **不要双击 `frontend/index.html`（file://）**。ES module 会被拦，页面是黑的。
 
-快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`J` 手账，`Esc` 关手账。
-URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
+快捷键：`H` 面板，`←` / `→` 每次 ±2°，`M` 静音，`K` 手感（常 / 低 / 关），`J` 贴纸本，`Esc` 关贴纸本或集齐画面，`C` 分享今天的小屋。
+URL：`?hud=0` 藏面板；`?ws=ws://127.0.0.1:9000` 改桥地址；`?season=0..3`；`?reset=1` 清空存档；`?nostore=1` 本次不读写；`?shareclip=1` 分享时一并录短片（默认不录）；`?pdb=1` 保留绘图缓冲（截图用，平时更吃合成线程）。
 面板里的「自动演示」会自己来回扫角度。
 
-桥连上且角度在 1.5 秒内到达时，左下圆点是绿的，滑块禁用。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次，不会越连越多。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`。
+桥连上且角度在 1.5 秒内到达时，左下圆点是绿的。假角度桥这时按钮是「■ 停止演示」，滑块禁用；再点一次改为滑块。实机合页（`--sensor`）按钮保持「▶ 自动演示」，角度跟盖子走，滑块禁用。只有再点按钮才会暂时改成本地扫角，点「停止」后回到合页。角度停了但连接还在，圆点变黄，可以改用滑块。套接字断开则马上回到灰点和「模拟模式」，大约每 2 秒重连一次；握手卡住超过 1.5 秒会主动关掉再连，不会越连越多，也不必靠刷新。健康检查在 `http://127.0.0.1:<ws 端口+1>/health`（默认 19877）。
 
 ### 仍想手动启动
 
 ```bash
-python3 -m http.server 8000 --directory frontend
+python3 backend/static_server.py --port 19081 --directory frontend --bind loopback
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 backend/.venv/bin/python backend/bridge.py --fake
-curl -s http://127.0.0.1:8766/health
+curl -s http://127.0.0.1:19877/health
 ```
 
 真实传感器改用 `backend/requirements-sensor.txt`，macOS 上先 `brew install hidapi`，然后去掉 `--fake`。
@@ -224,8 +285,8 @@ curl -s http://127.0.0.1:8766/health
 | `--offset` | 0 | 角度偏移（校准用，度） |
 | `--smooth` | 0 | 低通平滑 0–0.95，数值越大越稳越慢 |
 | `--clamp` | 180 | 角度上限（网页自己会再限制到 130） |
-| `--host` / `--port` | localhost / 8765 | WebSocket 监听地址 |
-| `--http-port` | 8766 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
+| `--host` / `--port` | localhost / 19876 | WebSocket 监听地址。`localhost`、`127.0.0.1`、`::1` 会同时绑 IPv4 和 IPv6 环回 |
+| `--http-port` | 19877 | `GET /health`。`./start.sh` 默认用 ws 端口 + 1 |
 
 ## 四、排查问题
 

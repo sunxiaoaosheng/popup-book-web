@@ -1,4 +1,7 @@
-"""按时间轴重放角度。一行一个 JSON：{"t": 秒, "angle": 度}，t 从 0 递增。"""
+"""按时间轴重放角度。一行一个 JSON：{"t": 秒, "angle": 度}，t 从 0 递增。
+
+可选 "weight"（0..1 的静置力度）。没有这个键时 read_weight() 返回 None，
+广播就省略字段，不会把旧的回放当成空板。"""
 
 import json
 
@@ -17,7 +20,13 @@ class ReplaySource(AngleSource):
                 if not line or line.startswith("#"):
                     continue
                 obj = json.loads(line)
-                self._rows.append((float(obj["t"]), float(obj["angle"])))
+                weight = None
+                if "weight" in obj and obj["weight"] is not None:
+                    try:
+                        weight = float(obj["weight"])
+                    except (TypeError, ValueError):
+                        weight = None
+                self._rows.append((float(obj["t"]), float(obj["angle"]), weight))
         if not self._rows:
             raise RuntimeError(f"回放文件是空的：{path}")
         self._rows.sort(key=lambda row: row[0])
@@ -31,6 +40,10 @@ class ReplaySource(AngleSource):
         while self._i + 1 < len(self._rows) and self._rows[self._i + 1][0] <= elapsed:
             self._i += 1
         return self._rows[self._i][1]
+
+    def read_weight(self):
+        """跟最近一次 read() 同一行。没有 weight 键时是 None，不是 0。"""
+        return self._rows[self._i][2]
 
     def close(self):
         return None

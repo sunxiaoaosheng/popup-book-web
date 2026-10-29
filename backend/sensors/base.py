@@ -9,6 +9,9 @@
         写进 /health 的模式。约定是 "fake"、"sensor"、"replay"。
     read() -> float | None
         当前角度（度）。暂时没有有效读数时返回 None，广播服务这一拍不发角度帧。
+    pull_taps() -> list[dict]
+        上次调用之后分好类的轻拍。每项只有 kind 和 strength。
+        不要返回波形或采样数组。默认没有。
     close() -> None
         释放设备或文件。可以调用多次。
 
@@ -22,6 +25,9 @@ class AngleSource:
 
     def read(self):
         raise NotImplementedError
+
+    def pull_taps(self):
+        return []
 
     def close(self):
         return None

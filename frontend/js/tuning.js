@@ -124,7 +124,7 @@ export const TUNING = {
     /** 这段时间内打开次数达到 oftenCount，心情变兴奋。 */
     oftenWindowMs: 45 * 60 * 1000,
     oftenCount: 3,
-    /** 被猛地合上之后，害羞持续这么久。 */
+    /** 被猛地合上或重拍之后，害羞持续这么久。两条路共用这一段。 */
     shyAfterSlamMs: 20 * 60 * 1000,
     /** 两次打开隔得比这更近，只算一次。 */
     reopenGapMs: 8 * 1000,
@@ -168,6 +168,30 @@ export const TUNING = {
     idleGapMin: 0.18,
     idleGapMax: 0.5,
   },
+
+  /**
+   * 轻拍和连敲。桥只上报 kind + strength，不传波形。
+   * 轻拍推一下舱门并让小猫抬头；连敲两下揭开附近还没贴上的贴纸；
+   * 连敲三下是大约 0.6 秒的花瓣，不是换季那道扫场。
+   * 重拍（strength ≥ tapStrong）和猛地合上共用害羞。
+   */
+  tapCooldown: 1,
+  /** 大于等于此时的 slap 算重拍。 */
+  tapStrong: 0.72,
+  /** 开发时键盘模拟用的力度。1 轻拍，4 重拍，2 和 3 是连敲。 */
+  tapKeyLight: 0.28,
+  tapKeyStrong: 0.92,
+  tapKeyKnock: 0.5,
+  /** 舱门被轻轻推开再回到原位要这么久。 */
+  tapDoorSec: 0.45,
+  /** 这一下额外张开的弧度。 */
+  tapDoorYaw: 0.28,
+  /** 抬头包络的时长，和门同一套形状。 */
+  tapLookSec: 0.5,
+  tapLookUp: 1,
+  /** 三连敲的花瓣点缀。不要拿去驱动换季扫场。 */
+  tapPetalSec: 0.6,
+  tapPetals: 22,
 };
 
 /**

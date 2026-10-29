@@ -96,5 +96,6 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
     },
     endingVisible() { return endingOn; },
     nudge(text) { nudge.textContent = '💭 ' + text; nudge.classList.add('show'); clearTimeout(nudgeTimer); nudgeTimer = setTimeout(() => nudge.classList.remove('show'), 7000); },
+    showJournal() { journal.toggle(true); },
   };
 }

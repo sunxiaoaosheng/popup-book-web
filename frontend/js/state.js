@@ -1,6 +1,7 @@
 // 运行时状态。测试钩子 `__popup.S` 指向同一对象。
 import { Spring } from './math.js';
 import { createKittenMood } from './kitten-mood.js';
+import { createTapState } from './tap-machine.js';
 
 export const MAX_ANGLE = 130;
 export const PW = 10;
@@ -38,6 +39,8 @@ export const S = {
   conP: 0, watchW: 0, noonW: 0, sneezeT: 0, sneezes: 0, sneezeSaid: false, sunsetT: 0, sunsetSaid: false,
   dawnW: 0, dawnHeld: false, dawnSaid: false, dawnPhase: 0, seasonMorphSaid: false,
   pageHidden: false, revealOpen: false, seasonCatchup: false, poseLatch: null,
+  journalNear: [],
+  tap: createTapState(),
   kittenMode: 'hidden', kittenMood: createKittenMood(), holdRing: -1, _heartOn: false,
   beats: { springSaid: false, winterSaid: false, springT: 0 },
   cap: '', capUntil: 0, moodCap: '', moodUntil: 0, moodKind: '', kx: 0, kz: 1.5, kvx: 0, leafT: 0, flyAt: 0, prevHop: 0, prevPeek: 0, soundKick: 0, shakeN: 0,

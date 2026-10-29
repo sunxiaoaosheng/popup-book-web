@@ -42,6 +42,47 @@ class SensorTest(unittest.TestCase):
         src.close()
         os.remove(path)
 
+    def test_replay_reports_classified_taps_not_waveforms(self):
+        fd, path = tempfile.mkstemp(suffix=".jsonl")
+        os.write(fd, "\n".join([
+            '{"t": 0, "angle": 10}',
+            '{"t": 0.4, "kind": "slap", "strength": 0.3, "waveform": [9, 9, 9]}',
+            '{"t": 1, "angle": 40, "kind": "triple-knock", "strength": 0.5}',
+            '{"t": 2, "angle": 80}',
+        ]).encode())
+        os.close(fd)
+        clock = _Clock()
+        src = ReplaySource(path, clock=clock)
+        self.assertEqual(src.read(), 10)
+        self.assertEqual(src.pull_taps(), [])
+        clock.t = 0.5
+        self.assertEqual(src.read(), 10)
+        taps = src.pull_taps()
+        self.assertEqual(taps, [{"kind": "slap", "strength": 0.3}])
+        self.assertNotIn("waveform", taps[0])
+        self.assertEqual(src.pull_taps(), [])
+        clock.t = 1
+        self.assertEqual(src.read(), 40)
+        self.assertEqual(src.pull_taps(), [{"kind": "triple-knock", "strength": 0.5}])
+        clock.t = 3
+        self.assertEqual(src.read(), 80)
+        self.assertEqual(src.pull_taps(), [])
+        src.close()
+        os.remove(path)
+
+    def test_fake_source_has_no_taps(self):
+        src = FakeSource(period=28.0, clock=_Clock())
+        self.assertEqual(src.pull_taps(), [])
+        src.close()
+
+    def test_replay_rejects_unknown_tap_kind(self):
+        fd, path = tempfile.mkstemp(suffix=".jsonl")
+        os.write(fd, b'{"t": 0, "angle": 1}\n{"t": 0.2, "kind": "wave", "strength": 0.2}\n')
+        os.close(fd)
+        with self.assertRaises(RuntimeError):
+            ReplaySource(path, clock=_Clock())
+        os.remove(path)
+
     def test_empty_replay_is_refused(self):
         fd, path = tempfile.mkstemp(suffix=".jsonl")
         os.close(fd)

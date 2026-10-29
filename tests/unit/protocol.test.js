@@ -41,6 +41,24 @@ test('mode rides along and stays off legacy frames', () => {
   assert.equal(legacy.mode, '');
 });
 
+test('tap frame is kind and strength, never a waveform', () => {
+  const f = parseAngleMessage('{"v":1,"seq":8,"t":3.2,"type":"tap","kind":"double-knock","strength":1.4,"mode":"replay","waveform":[0.2,0.9],"samples":[1,2]}');
+  assert.equal(f.type, 'tap');
+  assert.equal(f.kind, 'double-knock');
+  assert.equal(f.strength, 1);
+  assert.equal(f.angle, null);
+  assert.equal(f.mode, 'replay');
+  assert.equal(f.seq, 8);
+  assert.equal('waveform' in f, false);
+  assert.equal('samples' in f, false);
+  assert.deepEqual(Object.keys(f).sort(), ['angle', 'kind', 'legacy', 'mode', 'seq', 'strength', 't', 'type', 'v']);
+  const withAngle = parseAngleMessage('{"v":1,"seq":9,"t":4,"type":"tap","kind":"slap","strength":0.2,"angle":40}');
+  assert.equal(withAngle.type, 'tap');
+  assert.equal(withAngle.angle, null);
+  assert.equal(parseAngleMessage('{"type":"tap"}'), null);
+  assert.equal(parseAngleMessage('{"type":"tap","kind":"slap","strength":"loud"}'), null);
+});
+
 test('rejects junk', () => {
   assert.equal(parseAngleMessage(''), null);
   assert.equal(parseAngleMessage('{'), null);

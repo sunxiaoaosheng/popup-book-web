@@ -8,15 +8,17 @@ export const PROTOCOL_VERSION = 1;
 export const STALE_MS = 1500;
 
 /**
- * @typedef {'angle'|'heartbeat'} FrameType
+ * @typedef {'angle'|'heartbeat'|'tap'} FrameType
  * @typedef {Object} AngleFrame
  * @property {number} v 0 表示没有版本号的旧帧
  * @property {FrameType} type
- * @property {number|null} angle 心跳帧为 null
+ * @property {number|null} angle 心跳和轻拍为 null
  * @property {number|null} seq
  * @property {number|null} t 桥进程内的单调毫秒
  * @property {boolean} legacy
  * @property {string} mode 桥的模式；旧帧为空串
+ * @property {string} [kind] 轻拍的种类。角度帧没有这个字段
+ * @property {number} [strength] 轻拍力度 0–1。不带波形
  */
 
 /**
@@ -43,6 +45,13 @@ export function parseAngleMessage(raw) {
 
   if (declared === 'heartbeat') {
     return { v, type: 'heartbeat', angle: null, seq, t, legacy: false, mode };
+  }
+  if (declared === 'tap') {
+    const kind = typeof obj.kind === 'string' ? obj.kind : '';
+    const strength = typeof obj.strength === 'number' && Number.isFinite(obj.strength) ? obj.strength : null;
+    if (!kind || strength == null) return null;
+    const s = strength < 0 ? 0 : strength > 1 ? 1 : strength;
+    return { v, type: 'tap', angle: null, seq, t, legacy: false, mode, kind, strength: s };
   }
   if (declared === 'angle' || (declared === '' && angleOk) || (declared !== '' && declared !== 'angle' && angleOk)) {
     if (!angleOk) return null;

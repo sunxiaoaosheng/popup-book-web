@@ -6,6 +6,7 @@ import { emitAll } from './bus.js';
 import { stepSeason } from './season-machine.js';
 import { SUN_ARC, sunAt, TIMES } from './build-sky.js';
 import { applySeasonLight } from './season-light.js';
+import { doorNudgeYaw } from './tap-machine.js';
 
 const glassOff = new THREE.Color('#7f8f9a');
 const glassOn = new THREE.Color('#ffd37a');
@@ -135,7 +136,7 @@ export function stepStage(W, dt) {
   const v = W.tmp.v;
   W.cabin.localToWorld(v.set(W.SILL_X, 1.1, 1.6));
   W.gfx.windowLight.position.copy(v);
-  W.doorPivot.rotation.y = -F.doorP * 1.95;
+  W.doorPivot.rotation.y = -F.doorP * 1.95 - doorNudgeYaw(S.tap.door);
   W.puffs.forEach((p, i) => {
     const ph = (T * 0.22 + p.ph) % 1;
     p.g.visible = cabinE > 0.9 && litP > 0.05;

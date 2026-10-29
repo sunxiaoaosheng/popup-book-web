@@ -1,4 +1,4 @@
-"""角度来源。每种适配器都有 name、mode、read()、close()。见 docs/ADAPTERS.md。"""
+"""角度来源。每种适配器都有 name、mode、read()、close()，可选 pull_taps()。见 docs/ADAPTERS.md。"""
 
 from sensors.fake import FakeSource
 from sensors.lid import PyBookLidSource

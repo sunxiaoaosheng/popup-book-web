@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { matCache } from './materials.js';
 import { seasonIndex } from './rules.js';
+import { TUNING } from './tuning.js';
 
 const RAW = [
   { day: '#f7d3c2', mid: '#eab0a0', night: '#1c2a5a', sun: '#fff0e4', sunI: 2.6, hemi: '#fff1ec' },
@@ -114,8 +115,13 @@ export function createSeason(W) {
       SEASON.to = i;
       SEASON.t = 0;
       S.seasonMorphSaid = false;
-      // 新的一次合盖改走角度。刚解锁时挂上的 revealOpen 留着，等过滤角追上再补播。
+      // 新的一次合盖改走角度。盖子已经张开时留下 revealOpen，让这一帧的补播接上。
+      // 盖子又合到换季下沿以下，则停掉正在放的扫场。
       S.seasonCatchup = false;
+      if (S.target < TUNING.seasonMorphLo) {
+        S.revealOpen = false;
+        S.poseLatch = null;
+      }
     }
     S.season = i;
     applySeasonVisuals();

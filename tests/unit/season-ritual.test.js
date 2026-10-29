@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { morphProgress } from '../../frontend/js/rules.js';
 import { motifEvents, ritualFront, ritualIntensity, ritualKind, sweepParticle } from '../../frontend/js/season-ritual.js';
-import { playSeasonMotif } from '../../frontend/js/season-motif.js';
+import { playSeasonMotif, releaseDeferredMotif } from '../../frontend/js/season-motif.js';
 import { sampleSky, skyWeights, twilightPulse } from '../../frontend/js/sky-bands.js';
 import { TUNING } from '../../frontend/js/tuning.js';
 
@@ -108,6 +108,30 @@ test('motif player schedules notes and stays quiet before unlock', () => {
     _tone() { quiet.push('tone'); },
   }, 3);
   assert.deepEqual(quiet, ['motif-3']);
+});
+
+test('a motif that cannot play at reveal waits for the next lid motion', () => {
+  /** @type {string[]} */
+  const log = [];
+  let tones = 0;
+  const blocked = {
+    ready: false,
+    ctx: { state: 'suspended' },
+    log(name) { log.push(name); },
+    _now() { return 2; },
+    _tone() { tones += 1; },
+  };
+  playSeasonMotif(blocked, 2);
+  assert.deepEqual(log, ['motif-2']);
+  assert.equal(tones, 0);
+  assert.equal(releaseDeferredMotif(blocked, 40), false);
+  assert.equal(releaseDeferredMotif(blocked, 40), false);
+  blocked.ready = true;
+  blocked.ctx.state = 'running';
+  assert.equal(releaseDeferredMotif(blocked, 40.1), false);
+  assert.equal(releaseDeferredMotif(blocked, 48), true);
+  assert.equal(tones, motifEvents(2).length);
+  assert.equal(releaseDeferredMotif(blocked, 60), false);
 });
 
 test('sky weights cover dawn, noon, dusk and night', () => {

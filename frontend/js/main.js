@@ -57,27 +57,35 @@ function isMoving() {
 const perf = W.gfx.perf;
 let last = performance.now();
 
-function noteShown() {
-  // 用盖子读数，不用还在追的过滤角。隐藏期间合严、解锁时已经张开，就在这里挂上补播。
-  noteSeasonReveal(W.SEASON, S, S.target, !document.hidden);
+function markHidden() {
+  // 只记住「曾经藏起来」。不在这里读 S.target，也不决定补播。
+  if (document.hidden) S.pageHidden = true;
 }
-document.addEventListener('visibilitychange', noteShown);
-window.addEventListener('focus', noteShown);
+document.addEventListener('visibilitychange', markHidden);
+window.addEventListener('focus', markHidden);
+
+function runFrame(dt) {
+  input.tick(document.hidden ? 0 : dt);
+  if (document.hidden) S.pageHidden = true;
+  else noteSeasonReveal(W.SEASON, S, S.target, true);
+  if (!shouldRender(document.hidden)) {
+    // 屏幕被盖住时通常不再画。若这一拍仍然被调用，把已经记下的合严结算掉。
+    if (S.lidShut) step(W, dt);
+    return false;
+  }
+  step(W, dt);
+  return true;
+}
 
 function frame(now) {
   const raw = (now - last) / 1000;
   last = now;
   const dt = Math.min(0.05, Math.max(0, raw));
-  input.tick(document.hidden ? 0 : dt);
-  noteShown();
-  if (!shouldRender(document.hidden)) {
-    // 屏幕被盖住时通常不再画。若这一拍仍然被调用，把已经记下的合严结算掉。
-    if (S.lidShut) step(W, dt);
+  if (!runFrame(dt)) {
     perfPanel.paused();
     requestAnimationFrame(frame);
     return;
   }
-  step(W, dt);
   W.gfx.requestShadow(dt, isMoving());
   W.gfx.renderer.render(W.gfx.scene, W.gfx.camera);
   // 没在录短片时 sink 是 null，这里不读像素。
@@ -106,5 +114,16 @@ function frame(now) {
   });
   requestAnimationFrame(frame);
 }
+
+const popup = /** @type {any} */ (window).__popup;
+popup.frame = (sec = 1 / 60) => {
+  const dt = Math.min(0.05, Math.max(0, +sec || 0));
+  if (runFrame(dt)) {
+    W.gfx.requestShadow(dt, isMoving());
+    W.gfx.renderer.render(W.gfx.scene, W.gfx.camera);
+  }
+};
+popup.pushRaw = (raw) => input.pushRaw(raw);
+popup.holdSensor = (on) => input.holdSensor(on);
 
 requestAnimationFrame(frame);

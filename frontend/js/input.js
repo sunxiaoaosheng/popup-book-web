@@ -31,6 +31,7 @@ export function createInput(W) {
   let seen = -1;
   let timer = 0;
   let stopped = false;
+  let sensorHold = false;
   let dotOn = false;
   let srcCache = '';
   let angleCache = '';
@@ -45,6 +46,14 @@ export function createInput(W) {
     const angle = /** @type {number} */ (frame.angle);
     hiddenTrack = noteHiddenClose(S, hiddenTrack, angle, performance.now(), TUNING);
     setAngle(angle);
+  }
+
+  function acceptRaw(raw) {
+    if (latest !== null && seq !== seen) W.net.coalesced += 1;
+    latest = raw;
+    seq += 1;
+    // 合严后标签页隐藏，rAF 不再把中间角度排空。低于 closeBelow 的样本在这里记下。
+    if (document.hidden) rememberHiddenAngle(raw);
   }
 
   function setAngle(a) {
@@ -78,13 +87,7 @@ export function createInput(W) {
     }, 1500);
     const clearWatch = () => clearTimeout(watchdog);
     sock.onopen = () => { clearWatch(); gate.reset(); };
-    sock.onmessage = (ev) => {
-      if (latest !== null && seq !== seen) W.net.coalesced += 1;
-      latest = ev.data;
-      seq += 1;
-      // 合严后标签页隐藏，rAF 不再把中间角度排空。低于 closeBelow 的样本在这里记下。
-      if (document.hidden) rememberHiddenAngle(ev.data);
-    };
+    sock.onmessage = (ev) => { acceptRaw(ev.data); };
     // error 之后一定会 close。只在 close 里重连，避免两条路径把连接数翻倍。
     sock.onerror = () => { try { sock.close(); } catch { /* onclose 负责重连 */ } };
     sock.onclose = () => {
@@ -111,6 +114,12 @@ export function createInput(W) {
   }
 
   function noteLink() {
+    if (sensorHold) {
+      link = 'live';
+      bridgeMode = 'sensor';
+      W.net.link = link;
+      return;
+    }
     link = linkState(!!(ws && ws.readyState === 1), lastAngleAt, performance.now());
     W.net.link = link;
   }
@@ -225,6 +234,11 @@ export function createInput(W) {
 
   return {
     tick, maybeHud, refreshHud, setAngle, WS_URL,
+    pushRaw: acceptRaw,
+    holdSensor(on) {
+      sensorHold = !!on;
+      if (sensorHold) noteLink();
+    },
     get wsActive() { return link === 'live'; },
     get link() { return link; },
     get ws() { return ws; },

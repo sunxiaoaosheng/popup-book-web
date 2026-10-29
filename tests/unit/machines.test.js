@@ -6,7 +6,7 @@ import { stepClose, stepHolds, stepShake, stepStartle } from '../../frontend/js/
 import { noteHiddenClose } from '../../frontend/js/rules.js';
 import { ritualIntensity } from '../../frontend/js/season-ritual.js';
 import { stepSeasonBeats } from '../../frontend/js/season-beats.js';
-import { noteSeasonReveal, stepSeason } from '../../frontend/js/season-machine.js';
+import { cancelSeasonCatchup, catchupAngle, nextSeasonCatchT, noteSeasonReveal, stepSeason } from '../../frontend/js/season-machine.js';
 import { TUNING } from '../../frontend/js/tuning.js';
 
 function book() {
@@ -307,15 +307,35 @@ test('a hidden close that lands as the page is shown still catches up once', () 
   SEASON.t = 0;
   S.seasonCatchup = false;
   S.seasonMorphSaid = false;
-  assert.equal(stepSeason(SEASON, S, 4, 0.05).length, 0);
-  assert.equal(SEASON.t, 0);
-  assert.equal(S.revealOpen, true);
-  const ev = stepSeason(SEASON, S, 90, 0.05);
+  const ev = stepSeason(SEASON, S, 4, 0.05);
   assert.ok(SEASON.t > 0 && SEASON.t < 0.2);
+  assert.notEqual(SEASON.t, 1);
   assert.equal(S.seasonCatchup, true);
+  assert.equal(S.revealOpen, false);
   assert.ok(ev.some((e) => e.phase === 'caption'));
-  assert.equal(stepSeason(SEASON, S, 90, TUNING.seasonCatchupSec).filter((e) => e.phase === 'caption').length, 0);
+  assert.equal(stepSeason(SEASON, S, 4, TUNING.seasonCatchupSec).filter((e) => e.phase === 'caption').length, 0);
   assert.equal(SEASON.t, 1);
+});
+
+test('catch-up pose follows the sweep, and closing under 22° rewinds it', () => {
+  assert.equal(catchupAngle(4, 96, 0), 4);
+  assert.ok(Math.abs(catchupAngle(4, 96, 0.5) - 50) < 1e-9);
+  assert.equal(catchupAngle(4, 96, 1), 96);
+  const SEASON = { from: 0, to: 1, t: 0 };
+  const S = { revealOpen: true, seasonCatchup: false, poseLatch: null, seasonMorphSaid: true };
+  const t1 = nextSeasonCatchT(SEASON, S, 0.05);
+  assert.ok(t1 > 0 && t1 < 0.1);
+  assert.ok(catchupAngle(4, 96, t1) < 20);
+  SEASON.t = 0.4;
+  S.revealOpen = false;
+  S.seasonCatchup = true;
+  S.poseLatch = 4;
+  assert.equal(cancelSeasonCatchup(SEASON, S), true);
+  assert.equal(SEASON.t, 0);
+  assert.equal(S.seasonCatchup, false);
+  assert.equal(S.poseLatch, null);
+  assert.equal(S.seasonMorphSaid, false);
+  assert.equal(nextSeasonCatchT(SEASON, S, 0.05), null);
 });
 
 test('shown while still closed keeps the angle morph, and a visible fast open still snaps', () => {

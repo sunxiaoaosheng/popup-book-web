@@ -5,12 +5,24 @@ import { TUNING } from './tuning.js';
 import { heartTarget } from './rules.js';
 import { emitAll } from './bus.js';
 import { stepClose, stepHolds, stepShake, stepStartle } from './play-machine.js';
+import { cancelSeasonCatchup, catchupAngle, nextSeasonCatchT } from './season-machine.js';
+import { dropDeferredMotif, releaseDeferredMotif } from './season-motif.js';
 
 export function stepMotion(W, dt) {
   const { S, frame: F } = W;
   const T = (S.time += dt);
-  const a = clamp(S.target, 0, 130);
-  S.filtered += (a - S.filtered) * (1 - Math.exp(-dt / 0.035));
+  const goal = clamp(S.target, 0, 130);
+  if ((S.revealOpen || S.seasonCatchup) && goal < TUNING.seasonMorphLo) {
+    if (cancelSeasonCatchup(W.SEASON, S)) {
+      dropDeferredMotif();
+      if (typeof W.applySeasonVisuals === 'function') W.applySeasonVisuals();
+    }
+  }
+  const catching = !!(S.revealOpen || S.seasonCatchup);
+  if (!catching) {
+    S.poseLatch = null;
+    S.filtered += (goal - S.filtered) * (1 - Math.exp(-dt / 0.035));
+  }
   const v = (S.filtered - S.prevFiltered) / Math.max(dt, 1e-4);
   S.prevFiltered = S.filtered;
   S.vel += (v - S.vel) * (1 - Math.exp(-dt / 0.12));
@@ -24,12 +36,28 @@ export function stepMotion(W, dt) {
     S.lastDir = -1;
   }
   if (S.yawnT < 99) S.yawnT += dt;
-  const sp = S.sp;
+  let sp = S.sp;
 
   // 合盖在天空和扫场粒子之前结算。那些画面抛错时也不能把季节 +1 吃掉。
   // 隐藏期间补上的合严会把 filtered 拉低，后面的姿势跟这个新角度走。
   emitAll(W.bus, stepClose(S, { angle: A, speed: sp }));
   A = S.filtered;
+
+  const catchT = nextSeasonCatchT(W.SEASON, S, dt);
+  if (catchT != null) {
+    if (typeof S.poseLatch !== 'number') S.poseLatch = S.filtered;
+    const next = catchupAngle(S.poseLatch, goal, catchT);
+    const vBlend = (next - S.filtered) / Math.max(dt, 1e-4);
+    S.filtered = next;
+    S.prevFiltered = next;
+    S.vel = vBlend;
+    S.sp = Math.abs(vBlend);
+    sp = S.sp;
+    if (vBlend > 6) S.lastDir = 1;
+    else if (vBlend < -6) S.lastDir = -1;
+    A = S.filtered;
+  }
+  releaseDeferredMotif(W.sound, S.target);
 
   emitAll(W.bus, stepShake(S, { angle: A, time: T }));
   S.burstT = Math.max(0, S.burstT - dt);

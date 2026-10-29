@@ -8,7 +8,8 @@ import { TUNING } from './tuning.js';
 import { morphProgress } from './rules.js';
 
 /**
- * 从隐藏回到可见。angle 用当时的盖子读数（S.target），不要用还没追上的 filtered。
+ * 从隐藏回到可见。angle 必须是 input.tick() 已经写进 S.target 的盖子读数。
+ * 不要在 visibilitychange / focus 里提前调用：那时最新一帧可能还在套接字队列里。
  * 只有这次真的从隐藏里出来、而且盖子已经开过换季下沿，才挂上补播。
  * 盖子还在下沿以下就什么都不做，接下来仍按角度慢慢打开。
  * @param {{from:number, to:number, t:number}} SEASON
@@ -37,6 +38,44 @@ export function noteSeasonReveal(SEASON, S, angle, nowVisible, tuning = TUNING) 
 }
 
 /**
+ * 这一帧扫场会走到的 t。补播还没翻 seasonCatchup 时，revealOpen 也算。
+ * 纸艺张开用同一个数，避免先弹开再放粒子。
+ * @param {{from:number, to:number, t:number}|null|undefined} SEASON
+ * @param {{revealOpen?:boolean, seasonCatchup?:boolean}} S
+ * @param {number} [dt]
+ * @param {typeof TUNING} [tuning]
+ * @returns {number|null}
+ */
+export function nextSeasonCatchT(SEASON, S, dt = 0, tuning = TUNING) {
+  if (!(S.revealOpen || S.seasonCatchup)) return null;
+  if (!SEASON || !(SEASON.t < 1 && SEASON.from !== SEASON.to)) return null;
+  const dur = Math.max(0.05, tuning.seasonCatchupSec);
+  return Math.min(1, SEASON.t + Math.max(0, dt) / dur);
+}
+
+/** 补播时纸页从合上的位置走到当前盖子，t 和扫场共用。 */
+export function catchupAngle(latch, goal, t) {
+  return latch + (goal - latch) * t;
+}
+
+/**
+ * 补播途中盖子又合上。停掉扫场，把这一季的画面退回起点，等下次按角度打开。
+ * @param {{from:number, to:number, t:number}} SEASON
+ * @param {{revealOpen?:boolean, seasonCatchup?:boolean, poseLatch?:number|null, seasonMorphSaid?:boolean}} S
+ */
+export function cancelSeasonCatchup(SEASON, S) {
+  if (!(S.revealOpen || S.seasonCatchup)) return false;
+  S.revealOpen = false;
+  S.seasonCatchup = false;
+  S.poseLatch = null;
+  if (SEASON && SEASON.from !== SEASON.to && SEASON.t < 1) {
+    SEASON.t = 0;
+    S.seasonMorphSaid = false;
+  }
+  return true;
+}
+
+/**
  * @param {{from:number, to:number, t:number}} SEASON
  * @param {{seasonMorphSaid:boolean, seasonCatchup?:boolean, revealOpen?:boolean}} S
  * @param {number} angle
@@ -51,9 +90,9 @@ export function stepSeason(SEASON, S, angle, dt = 0, tuning = TUNING) {
     S.seasonCatchup = false;
     return events;
   }
-  // 补播看「已经张开」，不看是不是还停在 22°–65° 里面。
-  // 合严若赶在同一帧才入账，过滤角会被拉回 5° 以下，下一帧再开始，避免和这次合盖抢。
-  if (!S.seasonCatchup && S.revealOpen && angle >= tuning.seasonMorphLo) {
+  // 盖子够不够开，noteSeasonReveal 已经用排空后的 S.target 判过。
+  // 这里不再看过滤角：纸页要跟着扫场慢慢张开，不能等它先弹过 22°。
+  if (!S.seasonCatchup && S.revealOpen) {
     S.seasonCatchup = true;
     S.revealOpen = false;
   }

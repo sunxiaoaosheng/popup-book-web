@@ -13,7 +13,8 @@ test('legacy angle frame', () => {
 
 test('v1 angle keeps unknown fields out of the result', () => {
   const f = parseAngleMessage('{"v":1,"seq":4,"t":12.5,"type":"angle","angle":3,"vendor":{"x":1}}');
-  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'mode', 'seq', 't', 'type', 'v']);
+  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'light', 'mode', 'seq', 't', 'type', 'v']);
+  assert.equal(f.light, null);
   assert.equal(f.mode, '');
   assert.equal(f.v, 1);
   assert.equal(f.seq, 4);
@@ -39,6 +40,23 @@ test('mode rides along and stays off legacy frames', () => {
   assert.equal(fakeBeat.mode, 'fake');
   const legacy = parseAngleMessage('{"angle": 1}');
   assert.equal(legacy.mode, '');
+});
+
+test('optional light is finite lux or nothing', () => {
+  const withLight = parseAngleMessage('{"v":1,"seq":1,"t":1,"type":"angle","angle":10,"light":42.5}');
+  assert.equal(withLight.light, 42.5);
+  assert.equal(withLight.angle, 10);
+  const zero = parseAngleMessage('{"v":1,"seq":2,"t":1,"type":"angle","angle":10,"light":0}');
+  assert.equal(zero.light, 0);
+  const missing = parseAngleMessage('{"v":1,"seq":3,"t":1,"type":"angle","angle":10}');
+  assert.equal(missing.light, null);
+  const junk = parseAngleMessage('{"v":1,"seq":4,"t":1,"type":"angle","angle":10,"light":"dim"}');
+  assert.equal(junk.angle, 10);
+  assert.equal(junk.light, null);
+  const neg = parseAngleMessage('{"v":1,"seq":5,"t":1,"type":"angle","angle":10,"light":-3}');
+  assert.equal(neg.light, 0);
+  const legacy = parseAngleMessage('{"angle": 4}');
+  assert.equal(legacy.light, null);
 });
 
 test('rejects junk', () => {

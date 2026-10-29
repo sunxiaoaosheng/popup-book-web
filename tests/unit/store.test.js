@@ -42,6 +42,7 @@ test('loads an existing save and reset clears it', () => {
   assert.equal(store.cycles, 3);
   assert.equal(store.hasSecret('nap'), true);
   assert.equal(store.muted, true);
+  assert.equal(store.ambient, false);
   assert.equal(store.feel, 'normal');
   assert.equal(store.attemptCount('seam'), 0);
   assert.equal(store.finalePlayed(), false);
@@ -81,4 +82,21 @@ test('sticker progress sticks on the old save and reset clears it', () => {
   assert.equal(store.attemptCount('owl'), 0);
   assert.equal(store.hintTier('heart'), 0);
   assert.equal(store.finalePlayed(), false);
+});
+
+test('ambient light preference sticks, and reset turns it off', () => {
+  const { store, dump } = memoryStore(null);
+  assert.equal(store.ambient, false);
+  assert.equal(dump().ambient, false);
+  store.setAmbient(true);
+  assert.equal(store.ambient, true);
+  assert.equal(dump().ambient, true);
+  const again = memoryStore(dump());
+  assert.equal(again.store.ambient, true);
+  again.store.setAmbient(0);
+  assert.equal(again.store.ambient, false);
+  again.store.setAmbient(true);
+  again.store.reset();
+  assert.equal(again.store.ambient, false);
+  assert.equal(again.dump().ambient, false);
 });

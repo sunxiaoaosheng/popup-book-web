@@ -1,7 +1,11 @@
-"""按时间轴重放角度。一行一个 JSON：{"t": 秒, "angle": 度}，t 从 0 递增。"""
+"""按时间轴重放角度。一行一个 JSON：{"t": 秒, "angle": 度}，t 从 0 递增。
+
+可另写 "light"（勒克斯）。没有或不是有限数字时，这一行不带环境光。
+"""
 
 import json
 
+from protocol import optional_light
 from sensors.base import AngleSource
 
 
@@ -17,7 +21,8 @@ class ReplaySource(AngleSource):
                 if not line or line.startswith("#"):
                     continue
                 obj = json.loads(line)
-                self._rows.append((float(obj["t"]), float(obj["angle"])))
+                light = optional_light(obj.get("light")) if isinstance(obj, dict) else None
+                self._rows.append((float(obj["t"]), float(obj["angle"]), light))
         if not self._rows:
             raise RuntimeError(f"回放文件是空的：{path}")
         self._rows.sort(key=lambda row: row[0])
@@ -31,6 +36,11 @@ class ReplaySource(AngleSource):
         while self._i + 1 < len(self._rows) and self._rows[self._i + 1][0] <= elapsed:
             self._i += 1
         return self._rows[self._i][1]
+
+    def read_light(self):
+        if not self._rows:
+            return None
+        return self._rows[self._i][2]
 
     def close(self):
         return None

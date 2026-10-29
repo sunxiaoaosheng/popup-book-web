@@ -76,6 +76,24 @@ def main():
             back = pg.inner_text("#auto")
             disabled = pg.evaluate("() => document.getElementById('slider').disabled")
             check("再打开自动演示", "停止演示" in back and disabled, back)
+            amb = pg.inner_text("#ambient")
+            check("环境光默认关着", amb == "开启环境光", amb)
+            pg.click("#ambient")
+            pg.wait_for_timeout(400)
+            opened = pg.evaluate("__popup.dbg().ambient")
+            check(
+                "开启环境光后映射到已有时段",
+                pg.inner_text("#ambient") == "关闭环境光" and opened["on"] and opened["band"] in ("day", "dusk", "night"),
+                f"{pg.inner_text('#ambient')} {opened}",
+            )
+            pg.click("#ambient")
+            pg.wait_for_timeout(200)
+            closed = pg.evaluate("__popup.dbg().ambient")
+            check(
+                "关闭环境光后不再采用环境光时段",
+                pg.inner_text("#ambient") == "开启环境光" and closed["on"] is False and closed["band"] is None,
+                f"{pg.inner_text('#ambient')} {closed}",
+            )
             pg.close()
 
             q = b.new_page(viewport={"width": 1280, "height": 800})

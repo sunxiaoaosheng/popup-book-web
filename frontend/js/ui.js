@@ -1,5 +1,6 @@
-// 所有 DOM 界面都在这里：音效开关、小秘密贴纸本、提示 toast、"别动"进度环、晚安结尾。
+// 所有 DOM 界面都在这里：音效、手感、环境光、小秘密贴纸本、提示 toast、"别动"进度环、晚安结尾。
 // 贴纸格在 journal-book.js。主场景只通过返回的几个函数和它说话。
+import { AMBIENT_OFF_LABEL, AMBIENT_ON_LABEL } from './ambient-light.js';
 import { nextFeel } from './hinge-feel.js';
 import { createJournalBook } from './journal-book.js';
 
@@ -10,6 +11,12 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
   const tools = $('div', { id: 'tools' });
   const snd = $('button', { id: 'snd', className: 'ghost', type: 'button', title: '声音开关（M）' }, tools);
   const feelBtn = $('button', { id: 'feel', className: 'ghost', type: 'button', title: '动手感：常 / 低 / 关（K）。静音仍关掉全部声音' }, tools);
+  const ambBtn = $('button', {
+    id: 'ambient',
+    className: 'ghost',
+    type: 'button',
+    title: '用房间的光切换书页的白天、黄昏和夜。没有读数时仍用书里的时间',
+  }, tools);
   const jbtn = $('button', { id: 'jbtn', className: 'ghost', type: 'button', title: '小秘密贴纸本（J）' }, tools);
   const paintSnd = () => { snd.textContent = sound.muted ? '🔇 静音' : '🔊 声音'; };
   const paintJ = () => { jbtn.textContent = `📖 小秘密 ${store.foundCount()}/${SECRETS.length}`; };
@@ -19,6 +26,11 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
     feelBtn.textContent = FEEL_TEXT[level] || FEEL_TEXT.normal;
     feelBtn.dataset.feel = level;
   };
+  const paintAmbient = () => {
+    const on = !!store.ambient;
+    ambBtn.textContent = on ? AMBIENT_ON_LABEL : AMBIENT_OFF_LABEL;
+    ambBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  };
   const toggleMute = () => { sound.unlock(); sound.setMuted(!sound.muted); store.setMuted(sound.muted); paintSnd(); };
   const cycleFeel = () => {
     sound.unlock();
@@ -27,7 +39,8 @@ export function initUI({ SECRETS, SEASONS, store, sound }) {
   };
   snd.addEventListener('click', toggleMute);
   feelBtn.addEventListener('click', cycleFeel);
-  paintSnd(); paintFeel(); paintJ();
+  ambBtn.addEventListener('click', () => { store.setAmbient(!store.ambient); paintAmbient(); });
+  paintSnd(); paintFeel(); paintAmbient(); paintJ();
 
   let endingOn = false;
   const journal = createJournalBook({

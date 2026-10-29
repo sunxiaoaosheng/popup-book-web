@@ -2,6 +2,7 @@
  * 手感与玩法阈值。只放数字，不放场景。
  * 单位：角度是度，速度是度/秒（平滑后的角速度），时间是秒。
  * 改这里会影响 `rules.js` 的判定和场景里的实际触发。
+ * `ambient` 只服务环境光滞回，不参与秘密判定。
  */
 
 /** @typedef {typeof TUNING} Tuning */
@@ -95,6 +96,20 @@ export const TUNING = {
   ritualHaze: 0.36,
   ritualMotifVol: 0.08,
   ritualTwilight: 0.55,
+
+  /**
+   * 环境光，勒克斯。只改天空用哪一档白天 / 黄昏 / 夜，不改合页，也不另做季节。
+   * 夜和白天各有一进一出，中间停在黄昏，灯在门槛上来回时不会闪。
+   * 开关关掉，或 holdMs 毫秒里没有新的 light，就只用书里的时间。
+   */
+  ambient: {
+    nightOn: 12,
+    nightOff: 45,
+    dayOff: 160,
+    dayOn: 320,
+    holdMs: 2500,
+    blendTau: 0.7,
+  },
 
   // ---- 贴纸手账：靠近才揭提示。下面这些不改秘密本身的触发。 ----
   /** 邻近角度带比触发带每侧宽出的度数。 */

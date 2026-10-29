@@ -157,6 +157,7 @@ export function attachDebug(W, input) {
         ritualFront: +ritualFront(SEASON.t).toFixed(3),
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
         feel: W.store.feel,
+        ambient: W.ambient ? W.ambient.snapshot(!!W.store.ambient, performance.now()) : null,
         camFov: +W.camera.fov.toFixed(3),
         hinge: W.feelState ? {
           creak: +W.feelState.out.creakGain.toFixed(3),

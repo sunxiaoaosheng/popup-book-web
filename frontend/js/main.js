@@ -16,6 +16,7 @@ import { noteSeasonReveal } from './season-machine.js';
 import { attachDebug } from './debug.js';
 import { attachShare } from './share-wire.js';
 import { attachJournalWatch } from './journal-watch.js';
+import { createAmbientClock } from './ambient-light.js';
 
 const params = new URLSearchParams(location.search);
 const stageEl = document.getElementById('stage');
@@ -33,6 +34,7 @@ wirePlay(W);
 wireKitten(W);
 const perfPanel = createPerfPanel();
 
+W.ambient = createAmbientClock();
 const input = createInput(W);
 W.input = input;
 

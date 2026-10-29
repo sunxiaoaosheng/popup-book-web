@@ -139,6 +139,8 @@ export function createInput(W) {
         lastAngleAt = performance.now();
         noteMode(frame.mode);
         noteLink();
+        // 环境光跟着角度帧走，不改角度由谁驱动。没有 light 就保持上一拍，过期由时钟自己丢。
+        if (frame.light != null && W.ambient) W.ambient.note(frame.light, lastAngleAt);
         const src = driver();
         if (src === 'sensor' || src === 'remote') setAngle(/** @type {number} */ (frame.angle));
       }

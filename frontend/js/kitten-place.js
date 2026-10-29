@@ -1,5 +1,5 @@
 // 小猫在小屋局部坐标里的落点。门洞和台阶的尺寸跟 build-cabin / build-forest 对齐。
-import { clamp } from './math.js';
+import { clamp, sstep } from './math.js';
 
 /** 小屋原点在书页上的 z。台阶近沿（朝读者）在书页 z = 4.4。 */
 export const CABIN_Z = 2.65;
@@ -18,6 +18,17 @@ export const KIT_EXT = { left: 0.26, right: 0.58 };
  * 台阶近沿在书页 z = 4.4，内沿在 |x| = 1.65。这里用小屋局部坐标。
  */
 export const CHASE_BOX = { x0: -1.05, x1: 0.55, z0: 2.05, z1: 2.75 };
+
+/**
+ * 蹦上窗台的进度。害羞只把起跳从 91° 推迟到最多 96°，100° 一定已经坐好。
+ * 以前终点会跟着害羞推到 112°，而害羞要到 108° 才停，停在 107° 时跳永远落不下来。
+ * @param {number} angle
+ * @param {number} [shy] 0..1
+ */
+export function hopProgress(angle, shy = 0) {
+  const start = Math.min(91 + 10 * clamp(shy, 0, 1), 96);
+  return sstep(start, 100, angle);
+}
 
 /** @param {number} peekP 0..1 */
 export function doorPeek(peekP) {

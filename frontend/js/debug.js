@@ -1,7 +1,9 @@
 // 自动化测试用的 window.__popup。字段在 v6 的基础上多了 net.dropped 和 net.link。
 import { Sound } from './audio.js';
+import { createFeelState, stepHingeFeel } from './hinge-feel.js';
 import { lerp } from './math.js';
 import { step } from './sim.js';
+import { ritualFront, ritualIntensity, ritualKind } from './season-ritual.js';
 
 export function attachDebug(W, input) {
   const { S } = W;
@@ -48,6 +50,11 @@ export function attachDebug(W, input) {
     await render('shake', (s) => s.shake(0));
     await render('thud', (s) => s.thud());
     await render('lullaby', (s) => s.lullaby(3));
+    const st = createFeelState();
+    stepHingeFeel(st, { angle: 70, speed: 0, dt: 0.016, time: 0, level: 'normal' });
+    const loud = stepHingeFeel(st, { angle: 100, speed: 100, dt: 0.05, time: 0.2, level: 'normal' });
+    await render('hinge-foley', (s) => { s.stepHinge(loud, 0.2); });
+    await render('hinge-muted', (s) => { s.setMuted(true); s.stepHinge(loud, 0.2); });
     return res;
   }
 
@@ -82,6 +89,7 @@ export function attachDebug(W, input) {
       renderNow();
     },
     forceSeason(i) { W.setSeason(i, true); },
+    beginSeason(i) { W.setSeason(i, false); },
     render() { renderNow(); },
     project(name) {
       const o = {
@@ -113,13 +121,47 @@ export function attachDebug(W, input) {
         dawnStretch: +S.dawnW.toFixed(2), dawnPose: +(S.dawnStretch || 0).toFixed(2),
         dawnHeld: !!S.dawnHeld, dawnSaid: !!S.dawnSaid, period: S.tod,
         kittenMode: S.kittenMode,
+        mood: S.kittenMood.mood, moodAct: S.kittenMood.act, asleep: !!S.kittenMood.asleep,
+        moodCap: S.moodCap || '', greet: S.kittenMood.greetKind || '',
         seasonFrom: SEASON.from, seasonTo: SEASON.to, seasonT: +SEASON.t.toFixed(3),
         seasonMorphing: SEASON.t < 1 && SEASON.from !== SEASON.to, seasonMorphSaid: !!S.seasonMorphSaid,
+        seasonCatchup: !!S.seasonCatchup, revealOpen: !!S.revealOpen,
+        ritual: (SEASON.from !== SEASON.to && SEASON.t < 1) ? ritualKind(SEASON.to) : '',
+        ritualAmp: +ritualIntensity(SEASON.t).toFixed(3),
+        ritualFront: +ritualFront(SEASON.t).toFixed(3),
         kittenPos: W.kitten.position.toArray().map((x) => +x.toFixed(2)), hover: S.hover,
+        feel: W.store.feel,
+        camFov: +W.camera.fov.toFixed(3),
+        hinge: W.feelState ? {
+          creak: +W.feelState.out.creakGain.toFixed(3),
+          fov: +W.feelState.out.fov.toFixed(3),
+          shake: +Math.hypot(W.feelState.out.shakeX, W.feelState.out.shakeY).toFixed(4),
+        } : null,
+        stage: stageDbg(W),
         events: W.sound.events.slice(-14),
         trees: W.trees.map((t) => ({ row: t.row, q: +t.q.toFixed(3), phi: +(t.phi / (Math.PI / 2)).toFixed(3) })),
         net: { connects: W.net.connects, coalesced: W.net.coalesced, dropped: W.net.dropped, link: W.net.link },
       };
     },
+  };
+}
+
+/** @param {any} W */
+function stageDbg(W) {
+  const snap = W.stageSnap;
+  if (!snap) return null;
+  return {
+    beat: snap.beat,
+    mode: snap.mode,
+    vignette: +snap.vignette.toFixed(3),
+    slit: +snap.slit.toFixed(3),
+    dim: +snap.dim.toFixed(3),
+    sweep: +snap.sweepGlow.toFixed(3),
+    flash: +snap.flash.toFixed(3),
+    bow: +snap.bow.toFixed(3),
+    premiered: !!snap.premiered,
+    closeStyle: snap.closeStyle || '',
+    ground: +snap.layers.ground.toFixed(3),
+    kitten: +snap.layers.kitten.toFixed(3),
   };
 }

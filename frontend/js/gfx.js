@@ -7,6 +7,7 @@ export function createGfx(stageEl) {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     // 保留绘图缓冲会在每帧末尾强制拷贝，Mac 上容易把合成线程卡住。截图脚本需要时加 ?pdb=1。
+    // 分享卡不靠这个开关：按下时自己 readPixels，平时没有这份拷贝。
     preserveDrawingBuffer: params.get('pdb') === '1',
     powerPreference: 'high-performance',
   });

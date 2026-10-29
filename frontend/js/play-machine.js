@@ -8,6 +8,19 @@ import {
   closeKind, holdBand, holdDuration, isStartleOpen, noteShake, stepFullday,
 } from './rules.js';
 
+/**
+ * 这一档停满以后，画面上会不会有变化。
+ * 清晨那句在换季过程里不说，说过一次也不再说；这种时候进度环不该空转。
+ * @param {string} band
+ * @param {{dawnSaid?: boolean}} S
+ * @param {boolean} seasonMorphing
+ */
+function holdPays(band, S, seasonMorphing) {
+  if (band === 'seam' || band === 'nap' || band === 'chase') return true;
+  if (band === 'dawn') return !S.dawnSaid && !seasonMorphing;
+  return false;
+}
+
 /** @param {any} S @param {{angle:number, time:number}} input */
 export function stepShake(S, { angle, time }) {
   if (!noteShake(S.sw, angle, time, S.lastShake)) return [];
@@ -51,19 +64,28 @@ export function stepHolds(S, input) {
     H.t = 0;
     H.fired = false;
   } else H.t += dt;
+  // 停住判定允许 2° 左右的抖动，锚点会落在身后。盖子读数已经进了下一条
+  // 能兑现的带（例如人在 60°，锚点还在 58° 的清晨），改跟当前角度并重新计时。
+  // 清晨角度本身不变：51° 不会因此变成午觉。
+  const live = holdBand(angle, cabinP, peekP);
+  const anchored = holdBand(H.anchor, cabinP, peekP);
+  if (live && live !== anchored && holdPays(live, S, seasonMorphing) && !holdPays(anchored, S, seasonMorphing)) {
+    H.anchor = angle;
+    H.t = 0;
+    H.fired = false;
+  }
   H.band = holdBand(H.anchor, cabinP, peekP);
+  const pays = holdPays(H.band, S, seasonMorphing);
   const holdNeed = holdDuration(H.band);
-  S.holdRing = H.band && !H.fired && H.t > 0.7
+  S.holdRing = pays && !H.fired && H.t > 0.7
     ? clamp((H.t - 0.7) / Math.max(0.4, holdNeed - 0.7), 0, 1)
     : -1;
-  if (H.band && !H.fired && H.t >= holdNeed) {
+  if (pays && !H.fired && H.t >= holdNeed) {
     H.fired = true;
     if (H.band === 'dawn') {
       S.dawnHeld = true;
-      if (!S.dawnSaid && !seasonMorphing) {
-        S.dawnSaid = true;
-        events.push({ type: 'dawn-line' });
-      }
+      S.dawnSaid = true;
+      events.push({ type: 'dawn-line' });
     } else {
       S.act[H.band] = true;
       events.push({ type: 'secret', id: H.band });
@@ -89,13 +111,34 @@ export function stepHolds(S, input) {
 
 /** @param {any} S @param {{angle:number, speed:number}} input */
 export function stepClose(S, { angle, speed }) {
+  // 合严发生在页面看不见的时候：角度样本已经记在 lidShut 上。
+  // 先于「现在的角度」结算，并把过滤角拉回合盖线以下，
+  // 这样同帧的换季进度不会一下子跳过 22°–65°。
+  if (S.lidShut && S.armed) {
+    S.lidShut = false;
+    S.armed = false;
+    S.closing = false;
+    const kind = closeKind(S.closeMax);
+    if (S.filtered > TUNING.closeBelow) {
+      S.filtered = Math.max(0, TUNING.closeBelow - 1);
+      S.prevFiltered = S.filtered;
+      S.vel = 0;
+      S.lastDir = -1;
+      if (S.hinge) {
+        S.hinge.x = S.filtered;
+        S.hinge.v = 0;
+      }
+    }
+    return [{ type: 'close', kind }];
+  }
+  if (!S.armed) S.lidShut = false;
   if (angle > 60) S.armed = true;
   if (angle < 65 && S.lastDir < 0 && angle > 6 && S.armed) {
     if (!S.closing) { S.closing = true; S.closeMax = 0; }
     S.closeMax = Math.max(S.closeMax, speed);
   }
   if (angle > 75) S.closing = false;
-  if (S.armed && angle < 5 && S.closing) {
+  if (S.armed && angle < TUNING.closeBelow && S.closing) {
     S.armed = false;
     S.closing = false;
     return [{ type: 'close', kind: closeKind(S.closeMax) }];

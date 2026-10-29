@@ -7,6 +7,7 @@ import { emitAll } from './bus.js';
 import { stepKittenMode } from './kitten-machine.js';
 import { stepKittenMood } from './kitten-mood.js';
 import { applyKittenLook } from './kitten-look.js';
+import { applyEyeReadList } from './eye-read.js';
 import { stepSeasonBeats } from './season-beats.js';
 
 export function stepKitten(W, dt) {
@@ -338,5 +339,8 @@ export function stepKitten(W, dt) {
     distracted: !!(S.act.chase || S.act.nap || S.chaseP > 0.05 || S.napP > 0.2 || S.petDown || S.startled > 0.25),
     rng: Math.random,
   }));
-  if (showK) applyKittenLook(K, S.kittenMood, T, S.kittenMode, F.hopP > 0.85 && S.chaseP < 0.05);
+  if (showK) {
+    applyKittenLook(K, S.kittenMood, T, S.kittenMode, F.hopP > 0.85 && S.chaseP < 0.05);
+    applyEyeReadList(K.eyes, A);
+  }
 }

@@ -168,6 +168,24 @@ export const TUNING = {
     idleGapMin: 0.18,
     idleGapMax: 0.5,
   },
+
+  /**
+   * 低盖角眼睛。盖子越合，视线和屏幕法线的夹角越大，纸片眼睛被压扁。
+   * 低于 eyeReadBelow 用满：略放大（纵向多一点）、沿法线朝相机偏一点、加一圈淡轮廓。
+   * 到 eyeReadAbove 收回。完全打开时和原来一样，不改眨眼和心情的比例。
+   */
+  eyeReadBelow: 35,
+  eyeReadAbove: 52,
+  /** 横向额外比例。0.14 → 最合时宽 1.14 倍。 */
+  eyeReadScaleX: 0.14,
+  /** 纵向额外比例，抵消俯视压扁。仍比「撑满」克制，避免窗里的猫眼睛鼓出来。 */
+  eyeReadScaleY: 0.3,
+  /** 沿眼睛法线（局部 +Z，朝画面前方）推出的距离。 */
+  eyeReadZ: 0.014,
+  /** 绕局部 X 把法线往上、朝相机偏的弧度。负号在 eye-read.js 里。 */
+  eyeReadTilt: 0.22,
+  /** 轮廓环不透明度。缝里的眼睛再乘出现的那一层透明度。 */
+  eyeReadGlow: 0.4,
 };
 
 /**

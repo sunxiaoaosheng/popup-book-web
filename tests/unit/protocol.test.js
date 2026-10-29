@@ -13,7 +13,8 @@ test('legacy angle frame', () => {
 
 test('v1 angle keeps unknown fields out of the result', () => {
   const f = parseAngleMessage('{"v":1,"seq":4,"t":12.5,"type":"angle","angle":3,"vendor":{"x":1}}');
-  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'seq', 't', 'type', 'v']);
+  assert.deepEqual(Object.keys(f).sort(), ['angle', 'legacy', 'mode', 'seq', 't', 'type', 'v']);
+  assert.equal(f.mode, '');
   assert.equal(f.v, 1);
   assert.equal(f.seq, 4);
   assert.equal(f.t, 12.5);
@@ -28,6 +29,34 @@ test('heartbeat and future type that still carries an angle', () => {
   assert.equal(future.type, 'angle');
   assert.equal(future.angle, 12);
   assert.equal(future.v, 9);
+});
+
+test('mode rides along and stays off legacy frames', () => {
+  const sensor = parseAngleMessage('{"v":1,"seq":1,"t":1,"type":"angle","angle":12,"mode":"sensor"}');
+  assert.equal(sensor.mode, 'sensor');
+  const fakeBeat = parseAngleMessage('{"v":1,"seq":2,"t":2,"type":"heartbeat","mode":"fake"}');
+  assert.equal(fakeBeat.type, 'heartbeat');
+  assert.equal(fakeBeat.mode, 'fake');
+  const legacy = parseAngleMessage('{"angle": 1}');
+  assert.equal(legacy.mode, '');
+});
+
+test('tap frame is kind and strength, never a waveform', () => {
+  const f = parseAngleMessage('{"v":1,"seq":8,"t":3.2,"type":"tap","kind":"double-knock","strength":1.4,"mode":"replay","waveform":[0.2,0.9],"samples":[1,2]}');
+  assert.equal(f.type, 'tap');
+  assert.equal(f.kind, 'double-knock');
+  assert.equal(f.strength, 1);
+  assert.equal(f.angle, null);
+  assert.equal(f.mode, 'replay');
+  assert.equal(f.seq, 8);
+  assert.equal('waveform' in f, false);
+  assert.equal('samples' in f, false);
+  assert.deepEqual(Object.keys(f).sort(), ['angle', 'kind', 'legacy', 'mode', 'seq', 'strength', 't', 'type', 'v']);
+  const withAngle = parseAngleMessage('{"v":1,"seq":9,"t":4,"type":"tap","kind":"slap","strength":0.2,"angle":40}');
+  assert.equal(withAngle.type, 'tap');
+  assert.equal(withAngle.angle, null);
+  assert.equal(parseAngleMessage('{"type":"tap"}'), null);
+  assert.equal(parseAngleMessage('{"type":"tap","kind":"slap","strength":"loud"}'), null);
 });
 
 test('rejects junk', () => {

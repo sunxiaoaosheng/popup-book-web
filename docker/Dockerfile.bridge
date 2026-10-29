@@ -3,7 +3,7 @@ FROM python:3.12-alpine
 WORKDIR /app
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
-COPY backend/bridge.py backend/protocol.py backend/health.py backend/broadcast.py /app/
+COPY backend/bridge.py backend/protocol.py backend/health.py backend/broadcast.py backend/netbind.py /app/
 COPY backend/sensors /app/sensors
-EXPOSE 8765 8766
-ENTRYPOINT ["python3", "/app/bridge.py", "--fake", "--host", "0.0.0.0"]
+EXPOSE 19876 19877
+ENTRYPOINT ["python3", "/app/bridge.py", "--fake", "--host", "0.0.0.0", "--port", "19876", "--http-port", "19877"]

@@ -9,12 +9,31 @@ import sys
 import time
 
 from health import Status, serve_health
-from protocol import angle_frame, heartbeat_frame
+from netbind import loopback_hosts
+from protocol import angle_frame, heartbeat_frame, tap_frames_from
 
 try:
     import websockets
 except ImportError:
     sys.exit("缺少 websockets：请先 pip install websockets")
+
+
+def _send_taps(source, seq, t_ms, broadcast, status):
+    """把适配器已经分好类的轻拍发出去。波形不会出现在帧里。"""
+    pull = getattr(source, "pull_taps", None)
+    if not callable(pull):
+        return seq
+    try:
+        pulled = pull()
+    except Exception as e:
+        print(f"[bridge] 轻拍读取失败：{e}", file=sys.stderr)
+        return seq
+    stamp = t_ms() if callable(t_ms) else t_ms
+    seq, frames = tap_frames_from(pulled, seq, stamp, getattr(source, "mode", None))
+    for frame in frames:
+        broadcast(json.dumps(frame))
+        status.note_seq(frame["seq"])
+    return seq
 
 
 def serve(source, args):
@@ -32,7 +51,6 @@ async def _run(source, args):
     status = Status(source.mode, args.hz)
     if serve_health(args.host, args.http_port, status) is None:
         return 1
-    print(f"[bridge] 健康检查 http://{args.host}:{args.http_port}/health")
 
     clients = set()
     boot = time.monotonic()
@@ -83,8 +101,11 @@ async def _run(source, args):
     seq = 0
     next_heart = time.monotonic()
 
-    async with ws_serve(handler, args.host, args.port):
-        print(f"[bridge] WebSocket 监听 ws://{args.host}:{args.port}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
+    hosts = loopback_hosts(args.host)
+    ws_host = hosts if len(hosts) > 1 else hosts[0]
+    shown = ", ".join(f"ws://[{h}]:{args.port}" if ":" in h else f"ws://{h}:{args.port}" for h in hosts)
+    async with ws_serve(handler, ws_host, args.port):
+        print(f"[bridge] WebSocket 监听 {shown}  ({args.hz:g} Hz, {source.name})  Ctrl+C 退出")
         next_t = time.time()
         while True:
             raw = source.read()
@@ -101,14 +122,15 @@ async def _run(source, args):
                     a = smoothed
                 a = max(0.0, min(args.clamp, a))
                 seq += 1
-                broadcast(json.dumps(angle_frame(seq, t_ms(), a)))
+                broadcast(json.dumps(angle_frame(seq, t_ms(), a, source.mode)))
                 status.note_angle(a, seq)
                 if time.time() - last_print > 1.0:
                     print(f"[bridge] angle = {a:6.1f}°  (raw {raw:.1f})", end="\r", flush=True)
                     last_print = time.time()
+            seq = _send_taps(source, seq, t_ms, broadcast, status)
             if now >= next_heart:
                 seq += 1
-                broadcast(json.dumps(heartbeat_frame(seq, t_ms())))
+                broadcast(json.dumps(heartbeat_frame(seq, t_ms(), source.mode)))
                 status.note_seq(seq)
                 next_heart = now + 1.0
             next_t += interval

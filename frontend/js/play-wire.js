@@ -44,7 +44,7 @@ export function wirePlay(W) {
   });
 
   bus.on('act-clear', (e) => {
-    if (e.id === 'nap' && S.purring && !S.petDown) {
+    if (e.id === 'nap' && S.purring && !S.petDown && !(S.purrHold > 0)) {
       W.sound.purr(false);
       S.purring = false;
     }

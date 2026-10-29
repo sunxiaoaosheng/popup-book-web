@@ -12,6 +12,7 @@ import { wireTap } from './tap-wire.js';
 import { createPerfPanel } from './perf-panel.js';
 import { nextPixelRatio, nextShadowSize, shouldRender, QUALITY_WINDOW_S } from './quality.js';
 import { createInput } from './input.js';
+import { wireTrackpad } from './trackpad-wire.js';
 import { step } from './sim.js';
 import { noteSeasonReveal } from './season-machine.js';
 import { attachDebug } from './debug.js';
@@ -39,6 +40,7 @@ const perfPanel = createPerfPanel();
 W.ambient = createAmbientClock();
 const input = createInput(W);
 W.input = input;
+wireTrackpad(W);
 
 const unlockAudio = () => { sound.unlock(); };
 for (const ev of ['pointerdown', 'keydown', 'touchstart']) {

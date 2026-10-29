@@ -193,6 +193,7 @@ export function stepAmbient(W, dt) {
     caption.classList.toggle('greet', moodKind === 'greet');
     caption.classList.toggle('wake', moodKind === 'wake');
     caption.classList.toggle('sleep', moodKind === 'sleep');
+    caption.classList.toggle('purr', moodKind === 'purr');
   }
 }
 

@@ -2,6 +2,7 @@
 import { Spring } from './math.js';
 import { createKittenMood } from './kitten-mood.js';
 import { createTapState } from './tap-machine.js';
+import { createPetInput, createPetStick } from './trackpad-pet.js';
 
 export const MAX_ANGLE = 130;
 export const PW = 10;
@@ -29,7 +30,8 @@ export const S = {
   eyeOpen: 0.4, blinkT: 3,
   season: 0,
   shy: 0, duck: 0, flutT: 0, flutCool: 0, startled: 0, burstT: 0, lastShake: -99,
-  napP: 0, chaseP: 0, petE: 0, petT: 0, petDown: false, purring: false, napLock: 0,
+  napP: 0, chaseP: 0, petE: 0, petT: 0, petDown: false, purring: false, purrHold: 0, napLock: 0,
+  pet: createPetStick(), petIn: createPetInput(), petSquint: 0,
   sw: { dir: 0, ext: 0, swings: [] },
   hold: { anchor: 0, t: 0, band: '', fired: false },
   act: { seam: false, nap: false, chase: false },

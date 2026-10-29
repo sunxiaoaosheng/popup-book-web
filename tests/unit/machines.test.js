@@ -357,6 +357,17 @@ test('shown while still closed keeps the angle morph, and a visible fast open st
   assert.ok(ev.some((e) => e.phase === 'caption'));
 });
 
+test('season morph lands once when the sweep finishes', () => {
+  const SEASON = { from: 0, to: 1, t: 0 };
+  const S = book();
+  const mid = stepSeason(SEASON, S, 40);
+  assert.equal(mid.some((e) => e.phase === 'land'), false);
+  const done = stepSeason(SEASON, S, 100);
+  assert.equal(SEASON.t, 1);
+  assert.equal(done.filter((e) => e.phase === 'land').length, 1);
+  assert.equal(stepSeason(SEASON, S, 100).filter((e) => e.phase === 'land').length, 0);
+});
+
 test('spring and winter beats are not secrets and yield to a busy caption', () => {
   const beats = { springSaid: false, winterSaid: false, springT: 0 };
   let spring = null;
